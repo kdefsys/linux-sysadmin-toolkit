@@ -8,17 +8,17 @@ prácticas de scripting.
 
 # Contenido
 
-[registro_diario.sh](#registro_diariosh)
-[usuarios_procesos.sh](#usuarios_procesossh)
-[limpieza_enlaces.sh](#limpieza_enlacessh)
-[limpieza_contenido_logs.sh](#limpieza_contenido_logssh)
-[control_usuarios_permisos.sh](#control_usuarios_permisossh)
+- [registro_diario.sh](#registro_diariosh)
+- [usuarios_procesos.sh](#usuarios_procesossh)
+- [limpieza_enlaces.sh](#limpieza_enlacessh)
+- [limpieza_contenido_logs.sh](#limpieza_contenido_logssh)
+- [control_usuarios_permisos.sh](#control_usuarios_permisossh)
 
 _____________________________________________________________________________
 
 ## Estructura del directorio
 
-##**registro_diario.sh**
+## **registro_diario.sh**
    Nivel Básico **Tema:** fecha, redirección, archivos
 
   Descripción técnica:
@@ -41,7 +41,7 @@ _____________________________________________________________________________
  
 _____________________________________________________________________________
 
-##**usuarios_procesos.sh**
+## **usuarios_procesos.sh**
    Nivel Intermedio **Tema:** ps, gawk, sort, uniq,
    head, tuberias, arreglos asociativos
 
@@ -65,7 +65,7 @@ _____________________________________________________________________________
 
 _____________________________________________________________________________
 
-##**limpieza_enlaces.sh**
+## **limpieza_enlaces.sh**
    Nivel Avanzado **Temas:** enlaces simbólicos, find,
    rm, tee, xargs, redirecciones
 
@@ -92,7 +92,7 @@ _____________________________________________________________________________
 
 _____________________________________________________________________________
 
-##**limpieza_contenido_logs.sh**
+## **limpieza_contenido_logs.sh**
    Nivel Intermedio-Avanzado **Temas:** 
    Bash Scripting, manejo de archivos, logs, sort, uniqe, pipelines
 

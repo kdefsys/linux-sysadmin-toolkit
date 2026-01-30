@@ -24,11 +24,11 @@ a lo que se encuentra en equipos de infraestructura reales.
 
 ## Estructura del Repositorio
 
-[daily-tools](#daily-tools)
-[shell-core-concepts](#shell-core-concepts)
-[symlinks-tool](#symlinks-tools)
-[acces-control](#access-control)
-[process-management](#process-management)
+- [daily-tools](#daily-tools)
+- [shell-core-concepts](#shell-core-concepts)
+- [symlinks-tool](#symlinks-tools)
+- [acces-control](#access-control)
+- [process-management](#process-management)
 
 ## **daily-tools**
    Herramientas de uso cotidiano para la administración del sistema:

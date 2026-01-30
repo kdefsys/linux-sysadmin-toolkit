@@ -8,11 +8,11 @@ prácticas de scripting.
 
 # Contenido
 
-[registro_diario.sh](#registro_diario.sh)
-[usuarios_procesos.sh](#usuarios_procesos.sh)
-[limpieza_enlaces.sh](#limpieza_enlaces.sh)
-[limpieza_contenido_logs.sh](#limpieza_contenido_logs.sh)
-[control_usuarios_permisos.sh](#control_usuarios_permisos.sh)
+[registro_diario.sh](#registro_diariosh)
+[usuarios_procesos.sh](#usuarios_procesossh)
+[limpieza_enlaces.sh](#limpieza_enlacessh)
+[limpieza_contenido_logs.sh](#limpieza_contenido_logssh)
+[control_usuarios_permisos.sh](#control_usuarios_permisossh)
 
 _____________________________________________________________________________
 

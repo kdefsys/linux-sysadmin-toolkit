@@ -8,9 +8,9 @@ mantenimiento de servidores.
 
 # Contenido
 
-[auditar_symlinks_rotos.sh](#auditar_symlinks_rotos.sh)
-[limpieza_symlinks_huerfanos.sh](#limpieza_symlinks_huerfanos.sh)
-[verificar_y_reconstruir_symlinks.sh](#verificar_y_reconstruir_symlinks.sh)
+- [auditar_symlinks_rotos.sh](#auditar_symlinks_rotossh)
+- [limpieza_symlinks_huerfanos.sh](#limpieza_symlinks_huerfanossh)
+- [verificar_y_reconstruir_symlinks.sh](#verificar_y_reconstruir_symlinkssh)
 
 _____________________________________________________________________________
 

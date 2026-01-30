@@ -7,10 +7,10 @@ shell bash, de la línea de comandos y de scripting.
 
 # Contenido
 
-[auditar_archivos_criticos.sh](#auditar_archivos_criticos.sh)
-[analizar_logs_servicios.sh](#analizar_logs_servicios.sh)
-[limpieza_selectiva_archivos.sh](#limpieza_selectiva_archivos.sh)
-[auditoria_avanzada.sh](#auditoria_avanzada.sh)
+- [auditar_archivos_criticos.sh](#auditar_archivos_criticossh)
+- [analizar_logs_servicios.sh](#analizar_logs_serviciossh)
+- [limpieza_selectiva_archivos.sh](#limpieza_selectiva_archivossh)
+- [auditoria_avanzada.sh](#auditoria_avanzadash)
 
 _____________________________________________________________________________
 
@@ -90,7 +90,7 @@ _____________________________________________________________________________
 
 _____________________________________________________________________________
 
-##**limpieza_selectiva_archivos.sh**
+## **limpieza_selectiva_archivos.sh**
    Nivel Avanzado **Temas:** find, du, tuberias,
    mantenimiento de disco, validaciones, logs dinámicos, interacción con el usuario
 
@@ -135,7 +135,7 @@ _____________________________________________________________________________
 
 _____________________________________________________________________________
 
-##**auditoria_avanzada.sh**
+## **auditoria_avanzada.sh**
    Nivel Avanzado **Temas:** find, stat, du, xarfs, sort,
    gawk, auditoría de disco, análisis de archivos, scripting bash
 

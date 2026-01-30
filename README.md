@@ -28,6 +28,7 @@ a lo que se encuentra en equipos de infraestructura reales.
 [shell-core-concepts](#shell-core-concepts)
 [symlinks-tool](#symlinks-tools)
 [acces-control](#access-control)
+[process-management](#process-management)
 
 ## **daily-tools**
    Herramientas de uso cotidiano para la administración del sistema:
@@ -71,6 +72,18 @@ _____________________________________________________________________________
 
    Orientados a tareas de hardening y revisión post-incidente
 
+_____________________________________________________________________________
+
+## **process-management**
+   - Contiene scripts avanzados orientados a la gestión y auditoría de procesos
+   en sistemas Linux.
+   - Están diseñados para monitorear, auditar y analizar el comportamiento de
+   procesos en tiempo de ejecución, identificar problemas de performance,
+   problemas de tiempo excesivos y de detectar procesos zombies.
+   - SU objetivo es proveer herramientas prácticas que permitan a un sysadmin 
+   tomar decisiones informadas sobre la administración de recursos del sistema,
+   optimización de procesos y mitigación de riesgos operativos, sin afectar la
+   continuidad de los servicios
 _____________________________________________________________________________
 
 ## **Consideraciones**

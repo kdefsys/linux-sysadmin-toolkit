@@ -1,4 +1,4 @@
-# Sysadmin Projects
+# linux-sysadmin-toolkit
 
 Repositorio técnico orientado a administración de sistemas Linux, enfocado en
 automatización operativa, auditoría, mantenimiento preventivo, seguridad y 

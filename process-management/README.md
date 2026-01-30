@@ -9,8 +9,8 @@ entornos productivos.
 
 ## **Contenido**
 
-- [detectar_procesos_zombie.sh](#detectar_procesos_zombie.sh)
-- [auditoria_procesos_largos.sh](#auditoria_procesos_largos.sh)
+- [detectar_procesos_zombie.sh](#detectar_procesos_zombiesh)
+- [auditoria_procesos_largos.sh](#auditoria_procesos_largossh)
 
 _____________________________________________________________________________
 

@@ -7,15 +7,16 @@ Este directorio contiene herramientas y laboratorios enfocados en la
 responsabilidades centrales de un **Linux System Administrator /SRE** en 
 entornos productivos.
 
-## ***Contenido**
+## **Contenido**
 
-[detectar_procesos_zombie.sh](#detectar_procesos_zombie.sh)
-[auditoria_procesos_largos.sh](#auditoria_procesos_largos.sh)
+- [detectar_procesos_zombie.sh](#detectar_procesos_zombie.sh)
+- [auditoria_procesos_largos.sh](#auditoria_procesos_largos.sh)
 
 _____________________________________________________________________________
 
 ## **detectar_procesos_zombie.sh**
-
+   Nivel Avanzado 
+   
    Descripcion:
 
    En sistemas Linux en producción, los procesos zombis indican problemas en la

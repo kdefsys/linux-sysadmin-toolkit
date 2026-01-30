@@ -159,3 +159,4 @@ _____________________________________________________________________________
    - La combinación de while IFS=" " read y arrays permite procesar datos de
    manera segura, incluso si los nombres de usuario o rutas contienen espacios.
 
+_____________________________________________________________________________

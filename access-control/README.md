@@ -99,13 +99,17 @@ El script soporta **opciones de línea de comando**:
 **Ejemplo de ejecución:**
 
   bash
-# Detectar archivos world-writable en /home
+
+  Detectar archivos world-writable en /home:
+
 ./detector_permisos_inseguros.sh -d /home
 
-# Verificar directorios especiales con sticky bit
+ Verificar directorios especiales con sticky bit:
+
 ./detector_permisos_inseguros.sh -c
 
-# Aplicar sticky bit a /tmp si falta
+  Aplicar sticky bit a /tmp si falta:
+
 ./detector_permisos_inseguros.sh -f /tmp
 
    Curiosidad Técnica:

@@ -11,7 +11,6 @@ mantenimiento de servidores.
 - [auditar_symlinks_rotos.sh](#auditar_symlinks_rotossh)
 - [limpieza_symlinks_huerfanos.sh](#limpieza_symlinks_huerfanossh)
 - [verificar_y_reconstruir_symlinks.sh](#verificar_y_reconstruir_symlinkssh)
-
 _____________________________________________________________________________
 
 ## **auditar_symlinks_rotos.sh**

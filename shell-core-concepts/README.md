@@ -11,7 +11,6 @@ shell bash, de la línea de comandos y de scripting.
 - [analizar_logs_servicios.sh](#analizar_logs_serviciossh)
 - [limpieza_selectiva_archivos.sh](#limpieza_selectiva_archivossh)
 - [auditoria_avanzada.sh](#auditoria_avanzadash)
-
 _____________________________________________________________________________
 
 ## **auditar_archivos_criticos.sh**
@@ -160,3 +159,5 @@ _____________________________________________________________________________
    - Qué archivos eliminar
    - Qué usuarios están generando más consumo
    - Qué servicios están causando el crecimiento
+
+_____________________________________________________________________________

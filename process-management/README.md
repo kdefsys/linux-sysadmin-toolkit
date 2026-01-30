@@ -11,7 +11,7 @@ entornos productivos.
 
 - [detectar_procesos_zombie.sh](#detectar_procesos_zombiesh)
 - [auditoria_procesos_largos.sh](#auditoria_procesos_largossh)
-
+- [monitoreo_cpu_memoria.sh](#monitoreo_cpu_memoriash)
 _____________________________________________________________________________
 
 ## **detectar_procesos_zombie.sh**
@@ -134,5 +134,57 @@ _____________________________________________________________________________
 
    Cantidad de procesos totales: 2
    Nivel de severidad: OBSERVACIÓN
+
+_____________________________________________________________________________
+
+## **monitoreo_cpu_memoria.sh**
+   Nivel "Avanzado" **Temas:** Procesos, CPU, Memoria, Auditoría, Bash avanzado,
+   bc, filtros de texto
+
+   Descripción Técnica:
+
+   Este script permite auditar el consumo de CPU y memoria de los procesos en un
+   sistema Linux, detectando aquellos que superen los umbrales definidos por el
+   usuario.
+   Genera un reporte detallado en un archivo log que incluy: PID, UID, porcentaje
+   de CPU, porcentaje de memoria, tiempo de ejecución y comando. Además, indica
+   un nivel de severidad para cada proceso (OK, Observación, Crítico) basado en
+   el consumo relativo a los umbrales.
+
+   Uso Típico en las empresas:
+
+   Se puede utilizar en servidores de producción para:
+   - Detectar procesos qye consumen excesivamente CPU o memoria.
+   - Prevenir degradación del rendimiento de servicios críticos.
+   - Proporcionar informes periódicos para el equipo de sistemas.
+   - Monitoreo de servidores multiusuario donde varios procesos compiten por
+   recursos.
+
+   Ejemplo de ejecución
+ 
+   ./monitoreo_cpu_memoria.sh /var/log 0.1 4
+
+   Curiosidad Técnica:
+
+   - El script utiliza bc -l para operaciones con decimales y comparaciones de
+   consumo, ya que bash no soporta números decimales en (( )).
+   - Filtra procesos ignorando procesos del mismo script.
+   - gawl se usa para acumular totales de CPU y memoria, permitiendo un resumen
+   rápido en el log.
+   - Redirecciones y tee aseguran que la salida se almacene y se muestre en pantalla
+   simultáneamente
+
+   Ejemplo de salida:
+
+   ========LISTADO DE PROCESOS QUE SUPERAN LOS UMBRALES========
+
+   Fecha: 20260130-2105
+   Host: servidor01
+   Parámetros de entrada: /var/log 0.1 4
+   -------------------------------------
+   1234  1001 0.03 25.0 3600 /usr/bin/pythin3 Observacion OK
+   2345  1002 0.4 12.0 7200 /usr/bin/java Critico Critico
+
+   El total de consumo de CPU y de MEM respectivamente fue: 0.43 37.0
 
 _____________________________________________________________________________

@@ -29,6 +29,7 @@ a lo que se encuentra en equipos de infraestructura reales.
 - [symlinks-tool](#symlinks-tools)
 - [acces-control](#access-control)
 - [process-management](#process-management)
+- [storage-filesystems](#storage-filesystems)
 
 ## **daily-tools**
    Herramientas de uso cotidiano para la administración del sistema:
@@ -84,6 +85,13 @@ _____________________________________________________________________________
    tomar decisiones informadas sobre la administración de recursos del sistema,
    optimización de procesos y mitigación de riesgos operativos, sin afectar la
    continuidad de los servicios
+_____________________________________________________________________________
+
+## **storage-filesystems**
+   - Contiene scripts de dispositivos de bloque, particiones, montaje, etc.
+   - Esta orientado al gestión de almacenamiento en sistemas Linux
+   - Su objetivo es documentar y automatizar tareas críticas del alamacenamiento
+   - Permite recuperación de fallos, migraciones de discos y muchas cosas más.
 _____________________________________________________________________________
 
 ## **Consideraciones**

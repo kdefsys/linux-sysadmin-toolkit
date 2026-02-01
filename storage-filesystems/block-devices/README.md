@@ -10,9 +10,10 @@
 ## Contenido
 
 - [lsblk_report.sh](#lsblk_reportsh)
+- [blkid_inventory.sh](#blkid_inventorysh)
 _____________________________________________________________________________
 
-## **lsblk_report.sh"
+## **lsblk_report.sh**
 
   **Descripción Técnica**
   Es un script que auditoría de almacenamiento que analiza el estado de los
@@ -87,3 +88,69 @@ _____________________________________________________________________________
    Numeor de no montados: 1
  
 _____________________________________________________________________________
+
+## **blkid_inventory.sh**
+   Nivel: Intermedio-Avanzado
+   **Temas:** Linux storage, Block Devices, Filesystems, Auditoría, Bash, gawk, inventarios del sistema
+
+   **Descripción Técnica**
+
+   Es un script de auditoría que genera un inventario confiable de sistemas de archivos presentes en el
+   sistema Linux.
+   El script identifica de forma única cada dispositio de bloque utilizando información crítica como:
+
+   - DEVICE (/dev/sdXN, /dev/nvmeXpY, etc).
+   - UUID
+   - TYPE (ext4, xfs, swap, vfat, etc).
+   - LABEL (si existe)
+
+   La información se obtiene sin modificar el sistema, utilizando exclusivamente comandos de lectura (blkid) y
+   procesamiento estructurado con gawk
+   El resultado se almacena en un archivo .log con encabezados descriptivos y salida alineada, apta para auditorías
+   técnicas y documentación del estado del sistema.
+
+   **Uso Típico en las empresas**
+
+   - Auditorías de almacenamiento y sistemas de archivos.
+   - Documentación previa a migraciones de servidores.
+   - Reconstrucción segura del archivo /etc/fstab.
+   - Verificación de consistencia de UUIDs tras fallos o reemplazod e discos.
+   - Inventarios periódicos de infraestructura linux.
+   - Procesos de recuperación ante desastres (DRP).
+   - Identificación incorrecta de particiones.
+   - falta de documentación del almacenamiento real del sistema.
+
+   **Ejemplo de ejecución**
+
+   sudo ./blkid_inventory.sh /var/log/inventarios
+
+   **Curiosidad Técnica**
+
+   - El script utiliza 'blikd -o export', un formato estructurado pensadopara automatización y scripting.
+   - Se emplea gawk con FS="=" y RS=""
+   - Se usa switch dentro de gawk, demostrando conocimiento de estructuras propias del lenguaje.
+   - Se normalizan los campos vacíos (UUID,LABEL,TYPE) para evitar salidas inconsistentes.
+   - La redirección global con exec permite una salida limpia y mantenible hacia el archivo .log
+   - Se valida previamente la existencia del comando blkid usando 'command -v', garantizando portabilidad y control
+   de errores.
+
+   **Ejemplo de Salida**
+
+   ======== INVENTARIO DE SISTEMA DE ARCHIVOS ========
+
+   FECHA: 20260130_2315
+
+   HOST: servidor-linux
+
+   Usuario: root
+
+   Total de dispositivos: 2
+
+
+
+   DEVICE		UUID			TYPE		LABEL
+
+   /dev/sda1		XXXX-XXXX-XXXX		ext4		rootfs
+   /dev/sda2		XXXX-XXXX-XXXX		swap		-
+
+   ====================================================================

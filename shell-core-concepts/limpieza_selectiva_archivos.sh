@@ -14,7 +14,7 @@ DAY="$2"
 LOG="limpieza_$(date +%Y%m%d_%H%M).log"
 
 # Validaciones básicas
-if [[ -z "$DIR" || -z "$DIAS" ]]; then
+if [[ -z "$DIR" || -z "$DAY" ]]; then
   echo "Uso: $0 <directorio> <dias>"
   exit 1
 fi
@@ -25,13 +25,13 @@ if [[ ! -d "$DIR" ]]; then
 fi
 
 echo "=== Limpieza iniciada: $(date) ===" | tee "$LOG"
-echo "Directorio: $DIRECTORIO" | tee -a "$LOG"
-echo "Archivos mayores a $DIAS dias y > 1MB" | tee -a "$LOG"
+echo "Directorio: $DIR" | tee -a "$LOG"
+echo "Archivos mayores a $DAY dias y > 1MB" | tee -a "$LOG"
 echo
 
 # Buscamos archivos candidatos
 ARCHIVOS=$(find "$DIR" -type f \
-  \( -name "*.bak" -or -name "*.tmp" -or -name "*.old" -or -anem "backup_*" \) \
+  \( -name "*.bak" -or -name "*.tmp" -or -name "*.old" -or -name "backup_*" \) \
   -mtime +"$DAY" -size +1M )
 
 # Si no hay archivos, salimos

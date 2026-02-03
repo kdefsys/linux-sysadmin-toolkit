@@ -40,7 +40,7 @@ while getopts :d:f:c opt; do
 		exit
 	  fi
 	  if [ -k "$DIR" ]; then
-		echo "El directorio: $directorio ya tiene el sticky bit activado"
+		echo "El directorio: $DIR ya tiene el sticky bit activado"
 	  else
 		echo "¿Aplicar sticky bit a $DIR? [y/N]"
 		read -n1 opcion

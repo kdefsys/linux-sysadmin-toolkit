@@ -11,6 +11,7 @@
 
 - [lsblk_report.sh](#lsblk_reportsh)
 - [blkid_inventory.sh](#blkid_inventorysh)
+- [device_audit.sh](#device_auditsh)
 _____________________________________________________________________________
 
 ## **lsblk_report.sh**
@@ -154,3 +155,85 @@ _____________________________________________________________________________
    /dev/sda2		XXXX-XXXX-XXXX		swap		-
 
    ====================================================================
+
+_____________________________________________________________________________
+
+## **device_audit.sh**
+   Nivel: Intermedio
+   **Temas:** Dispositivos de bloque, Major/Minor numbers, SCSI, kernel drivers,
+   lsblk, lsscsi, /proc, auditoría de almacenamiento
+
+   **Descripción Técnica**
+
+   device_audit.sh es un script de auditoría que analiza los dispositivos de bloque
+   presentes en el sistema Linux y genera un reporte técnico consolidado.
+
+   El script recopila información desde distintas capas del sistema:
+
+   - Capa de usuario (lsblk)
+   - Kernel (/proc/devices)
+   - Subsistema SCSI (lsscsi)
+   - Dispositivos especiales (/dev)
+
+   Su objetivo es identificar cómo el kernel reconoce y controla cada dispositivo
+   diferenciando entre discos físicos y particiones, mostrando drivers asociados,
+   numeros Major/MInor, tipo de transporte, punto de montaje y sistema de archivos
+
+   El resultado se guarda en un archivo de texto para su posterior revisión o
+   documentación
+
+   **Uso Típico en las empresas**
+
+   - Auditorías de hardware en servidores Linux
+   - Diagnóstico de problemas de almacenamiento
+   - Documentación técnica antes de migraciones o cambios
+   - Validar qué driver del kernel controla cada disco
+   - Verificar configuraciones antes de montar nuevos volúmenes
+   - Soporte técnicode segundo nivel (L2/L3)
+
+   **Ejemplos Reales**
+
+   - Un servidor no reconoce correctamente un disco
+   - Un nuevo storage fue contectado y se necesita validar su detección
+   - Se debe entregar un inventario técnico del servidore a otro equipo
+   - Verificar diferencias entre entornos (producción vs pruebas)
+
+   **Ejemplo de Ejecución**  sudo ./device_audit.sh
+
+   **Curiosidad Técnica**
+
+   - El script extrae los números Major y Minor desde lsblk y los cruza con
+   /proc/devices para identificar el driver real del kernel que controla el
+   dispositivo
+
+   - Solo los discos físicos aparecen en lsscsi
+   Las particiones heredan el dispositivo padre, por eso el scrip detecta cuando
+   un dispositivo no tiene información SCSI
+
+   - La salida de lsscsi es procesada para extraer:
+   Host, Bus, ID SCSI y LUN sin depender de herramientas externas
+
+   **Ejemplo de Salida**
+
+   =========== INFORME DE AUDITORIA DE DISPOSITIVO DE BLOQUE ================
+
+   Device: sda
+
+   Type: block
+
+   Major: 8
+
+   Minor: 0
+
+   Driver: sd
+
+   Transport: sata
+
+   SCSI:
+    - host: 2
+    - bus: 0
+    - id: 0
+    - lun: 0
+
+   Montado: NO ESTÁ MONTADO
+   FILESYSTEM: 

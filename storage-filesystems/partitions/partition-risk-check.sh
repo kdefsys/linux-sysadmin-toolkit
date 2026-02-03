@@ -209,7 +209,7 @@ layout_ok=1
 
 ## / y /var en la misma particion
 
-if [[ -n "$root_dev" && -n "$var_dev" && "$root_dev" == "var_dev" ]]; then
+if [[ -n "$root_dev" && -n "$var_dev" && "$root_dev" == "$var_dev" ]]; then
 	echo "[WARNING] Diseño del sistema de archivos"
 	echo " - / and /var comparten la misma particion $(root_dev)"
 	echo " - Riesgo: El crecimiento del registro puede llenar el sistema de archivo raiz"

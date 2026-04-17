@@ -13,6 +13,7 @@ prácticas de scripting.
 - [limpieza_enlaces.sh](#limpieza_enlacessh)
 - [limpieza_contenido_logs.sh](#limpieza_contenido_logssh)
 - [control_usuarios_permisos.sh](#control_usuarios_permisossh)
+- [mensajeria.sh](#mensajeriash)
 
 _____________________________________________________________________________
 
@@ -160,3 +161,42 @@ _____________________________________________________________________________
    manera segura, incluso si los nombres de usuario o rutas contienen espacios.
 
 _____________________________________________________________________________
+
+## **mensajeria.sh**
+   Nivel Intermedio **Temas:** Administración de Usuarios, Automatización Bash, I/O
+   Redirection, Procesamiento de Texto con gawk.
+
+   Descripción Técnica:
+   Este script automatiza el proceso de comunicación interna entre administradores
+   y usuarios en un entorno Linux multiusuario. Su objetivo principal es localizar
+   de forma dinámica la terminal activa de un usuario específico y enviarle un mensaje
+   directo. El script incluye una capa de seguridad que valida la existencia del usuario
+   en la base de datos /etc/passwd mediante getent antes de intentar cualquier comunicación,
+   evitando errores de ejecución y procesos huérfanos.
+
+   Uso Típico en las empresas:
+   - Mantenimiento Programado: Un administrador de sistemas necesita notificar a un usuario
+   especifico que su sesión será cerrad para realizar actualizaciones de software sin afectar
+   a todos los demás conectados
+   - Seguridad: Alertar a un usuario que está ejecutando un proceso que consume demasiados
+   recursos (CPU/RAM) antes de finalizar su tarea de forma forzada (kill) 
+   - Resolución de Problemas: Permite al equipo de soporte técnico enviar instrucciones
+   directas a la pantalla de un empleado mientras este realiza una tarea en la terminal,
+   facilitando la asistencia remota en servidores locales.
+
+   Ejemplo de Ejecución:
+   1. Asegúrate de tener permisos de ejecución: chmod u+x mensajería.sh
+   2. Ejecuta el script ./mensajeria.sh
+   3. Ingresa el nombre del usuario y el mensaje cuando el script lo solicite
+
+   Curiosidad Técnica:
+   - getent passwd: A diferencia de leer el archivo /etc/passwd directamente, este comando
+   es más robusto ya que puede consultar usuarios en base de datos externas como LDAP o AD si
+   el servidor está integrado en una red empresarial.
+   - grep -i -m 1 "^$nameUser ": El uso del ancla ^ y el espacio final garantiza que si buscas
+   al usuario "Ana", no coincida por error con "Anabel" o "Anastasia".
+   - gawk '{print $2}': Se utiliza para extraer específicamente la columna de la terminal
+   (tty o pts) de la salida del comando who, permitiendo que el mensaje llegue al dispositivo
+   correcto
+
+____________________________________________________________________________________________

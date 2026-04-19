@@ -161,8 +161,8 @@ _____________________________________________________________________________
    evitando saturar el sistema con logs innecesarios
    - Usa find -not -perm -g=s para identificar archivos que no cumplen con
    permisos de grupo, una técnica profesional común en auditorías de seguridad
-   - La combinación de while IFS=" " read y arrays permite procesar datos de
-   manera segura, incluso si los nombres de usuario o rutas contienen espacios.
+   - Usamos el wc -l < "$SALIDA" el redireccionamiento de entrada para que así
+   en el printf aparezca solo el numero y no el nombre del archivo
 
 _____________________________________________________________________________
 

@@ -6,34 +6,31 @@
 # Introducimos un parámetro: directorio compartido
 
 SALIDA="usuarios_bash.txt"
-FECHA=$(date +'%Y/%m/%d %H:%M:%S')
 SALIDA2="archivos_no_lectura.txt"
+FECHA=$(date +'%Y-%m-%d %H:%M:%S')
+DIRECTORIO="${1:-.}"
 
-if [ -f "$SALIDA" ]; then
-	cat < /dev/null > "$SALIDA"
+if [ ! -d "$DIRECTORIO" ]; then
+	echo "Error: El directorio '$DIRECTORIO' no existe."
+	exit 1
 fi
 
-if [ -f "$SALIDA2" ]; then
-	cat < /dev/null > "$SALIDA2"
-fi
+> "$SALIDA"
+> "$SALIDA2"
 
-while IFS=" " read usuario bash; do
-	if [[ "$bash" == "/bin/bash" ]]; then
-		echo "$usuario" >> "$SALIDA"
-	fi
-done < <(gawk 'BEGIN{FS=":"} {print $1,$7}' /etc/passwd)
+gawk 'BEGIN{FS=":"} $7=="/bin/bash"{print $1}' /etc/passwd > "$SALIDA"
 
-echo "Usuarios cuyo shell es /bin/bash"
+echo "---Usuarios cuyo shell es /bin/bash---"
 cat "$SALIDA"
+echo "--------------------------------------"
 
-DIRECTORIO="$1"
+find "$DIRECTORIO" -typ f -not -perm -g=r -print 2>/dev/null | tee "$SALIDA2"
 
-if [ -d "$DIRECTORIO" ]; then
-	find "$DIRECTORIO" -type f -not -perm -g=r | tee "$SALIDA2"
-else
-	echo "Ese directorio no existe"
-fi
+TOTAL_USUARIOS=$(wc -l < "$SALIDA")
+TOTAL_ARCHIVOS=$(wc -l < "$SALIDA2")
 
-echo -e "===== $FECHA ========\n"
-echo -e "Total de usuarios bash: $(wc -l $SALIDA)\n"
-echo -e "Total de archivos no legibles por el grupo: $(wc -l $SALIDA2)\n"
+echo -e "\n===REPORTE: $FECHA ========"
+printf "Total de usuarios bash %d\n" "$TOTAL_USUARIOS"
+printf "Archivos no legibles por el grupo: %d\n" "$TOTAL_ARCHIVOS"
+echo "========================================="
+

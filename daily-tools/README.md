@@ -57,12 +57,16 @@ _____________________________________________________________________________
    Uso Típico en empresas:
    - Monitorizar la carga de usuarios en servidores compartidos
    - Detectar posibles **sobreutilizaciones o procesos problemáticos** que
-   afecten el rendimiento
+   afecten el rendimiento.
    - Sirve como base para alertas automatizadas en scripts de administración.
 
    Curiosidad Técnica:
    - La combinacion sort | uniq es un patrón muy común en Bash para contar y
-   ordenar ocurrencias de cualquier dato en logs, txt o listas
+   ordenar ocurrencias de cualquier dato en logs, txt o listas.
+   - Usamos el comando mapfile para asi poder generar un arreglo inteligente que entienda
+   que una linea representa un elemento del array, asi nos eviatmos el problema
+   si un usuario tiene espacios en su nombre, el mapfile lo guarda como un unico
+   elemento, asi en el for solo tendriamos que usar "${LIST_USER[@]}".
 
 _____________________________________________________________________________
 

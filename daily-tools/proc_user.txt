@@ -1,0 +1,10 @@
+root  108
+admin  78
+bin  34
+daemon  14
+sys  13
+gdm  4
+syslog  4
+avahi  3
+kernoops  3
+sync  3

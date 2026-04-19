@@ -4,13 +4,11 @@
 
 # Primero veamos todos los usuarios que hay
 
-LIST_USER=$(cat /etc/passwd | gawk 'BEGIN{FS=":"} {print $1}' | sort | uniq )
-
-echo "$LIST_USER"
+mapfile -t LIST_USER < <(cat /etc/passwd | gawk 'BEGIN{FS=":"}{print $1}' | sort | uniq)
 
 declare -A USUARIOS
 
-for user in $LIST_USER; do
+for user in "${LIST_USER[@]}"; do
 	CUENTA=$(ps aux | grep $user | sort -k 1,1 | uniq | wc -l)
 	USUARIOS["$user"]=$CUENTA
 done

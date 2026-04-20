@@ -14,7 +14,7 @@ prácticas de scripting.
 - [limpieza_contenido_logs.sh](#limpieza_contenido_logssh)
 - [control_usuarios_permisos.sh](#control_usuarios_permisossh)
 - [mensajeria.sh](#mensajeriash)
-
+- [monitor_recursos_umbral.sh](#monitor_recursos_umbralsh)
 _____________________________________________________________________________
 
 ## Estructura del directorio
@@ -204,3 +204,49 @@ _____________________________________________________________________________
    correcto
 
 ____________________________________________________________________________________________
+
+## **monitor_recursos_umbral.sh**
+   Nivel Intermedio **Temas:** Monitoreo de Recursos, Descriptores de Archivo, Automatización, Parsing
+   de Texto
+
+   Descripción Técnica:
+   Este script actúa como un sistema de alerta temprana para servidores Linux. Se objetivo
+   es automatizar la vigilancia de los dos recursos más críticos del sistema: la CPU y la
+   memoria RAM. El script lee umbrales de seguridad desde un archivo de configuración externo
+   y los compara con el estado global del sistema en tiempo real. Si detecta que el servidor
+   está bajo un estrés superior al permitido, realiza un volcado de los procesos "culpables"
+   (los 5 que más consumen) hacia un log histórico para un análisis forense posterior.
+
+   Uso Típico en las empresas:
+   Se utiliza para evitar el **"Down-time"** (caída del servicio). Las empresas lo programan
+   para que se ejecute cada minuto mediante un Cronjob
+   - Ideal para servidores web o de bases de datos donde un proceso "zombie" o una fuga de memoria
+   podría ralentizar el servicio a los clientes
+   - Evita que el administrador tenga que estar mirando el comando top manualmente. Permite
+   identificar que usuario o programa saturó el servidor en el pasado (por ejemplo, durante la
+   madrugada) consultando el archivo de logs.
+
+   Ejemplo de Ejecución:
+   Primero, asegúrate de tener el archivo de configuración (ej. monitor.conf) con los valores deseados
+   (CPU y RAM) en una sola línea: 80 70
+   Luego, ejecuta el script pasando el archivo como parámetro:
+   ./monitor_recursos.sh monitor.conf
+
+   Curiosidad Técnica:
+   - Descriptores de Archivo (exec 3>> ): En lugar de abrir y cerrar el log en cada linea de código
+   el script abre un "canal" dedicado(el número 3) que permanece abierto hasta el final, optimizando
+   el rendimiento de entrada/salida (I/O).
+   - Tubería de Filtrado Aritmético: Combina top en modo batch (-bn1) con gawk para realizar
+   una suma aritmética de estados user y system, obteniendo así la carga real de trabajo en CPU sin
+   contar el tiempo de espera.
+
+   Salida de Ejemplo:
+   ==========REPORTE: '2026-04-19 19:30:05'==========
+   [ALERTA RAM] Uso actual: 85% (Limite: 70%)
+   root      1245  15.2  35.5  Ss   /usr/bin/python3_app
+   mysql     950   5.5   20.1  Sl   /usr/sbin/mysqld
+   apache2   2241  2.1   10.2  S    /usr/sbin/apache2
+   usuario1  5560  1.0   5.0   R    ./proceso_pesado.sh
+   root      1     0.0   0.1   Ss   /sbin/init
+
+_____________________________________________________________________________________________________________

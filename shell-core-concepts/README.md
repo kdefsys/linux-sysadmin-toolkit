@@ -45,8 +45,10 @@ _____________________________________________________________________________
    - 'stat -c '%n|%s|%y|%Y' para obtener múltiples atributos del archivo en una sola
    llamada
    - 'date +%s' para trabajar con timestamps Unix
-   - 'awk' para comparar tiempos de modificación en segundos y filtrar por ventanas
-   temporales exactas (24h=86400s)
+   - 'gawk' para comprimir los atributos con un OFS adecuado
+
+   Ejemplo de Ejecución:
+   ./auditar_archivos_criticos.sh directorio
 
 _____________________________________________________________________________
 

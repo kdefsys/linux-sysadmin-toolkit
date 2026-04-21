@@ -80,10 +80,13 @@ _____________________________________________________________________________
    para priorizar qué servicios requieren atención inmediada
 
    Curiosidad Técnica:
-   Un punto interesante ddel script es el uso de 'xargs grep -ic' que permite:
+   Un punto interesante del script es el uso de 'grep -Hic' que permite:
    - Procesar múltiples archivos de forma eficiente
    - Contar ocurrencias por archivo en una sola pasada
    - Evitar abrir logs manualmente uno por uno
+   - La opcion -H, nos ayuda a que incluso si el find solo encuentra un archivo,
+   la salida mantenga el formato archivo:conteo, lo cual evita que el sort se
+   rompa.
 
    Además, el uso de 'sort -k 2nr' ordena los resultados basándose únicamente en el
    número de coincidencias, lo que convierte una gran cantidad de logs crudos en un

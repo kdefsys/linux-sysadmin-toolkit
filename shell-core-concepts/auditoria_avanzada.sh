@@ -1,51 +1,54 @@
 #!/bin/bash
-# auditoria_avanzada.sh
-### Script de auditoría de disco que permite a un sysadmin identificar archivos
-### problemáticos en servidores linux que crecen silenciosamente y causan
-### saturacion de disco
-### Entrada tendra 3 parametros: directorio, tamaño en MB y numero de dias
+### auditoria_avanzada.sh
+### Este script actua como una herramienta de administracion
+### de sistemas para localizar archivos de gran tamaño que han sido
+### modificados recientemente, facilitando la prevencion de saturacion
+### en los discos del servidor
 
-DIR="$1"
-TAM="$2"
-DIA="$3"
-SALIDA="auditoria_disco_$(date +'%Y%m%d_%H%M').log"
-
-ARCHIVOS=$(find "$DIR" -type f -size +"${TAM}"M -mtime -"$DIA")
-
-if [ -z "$ARCHIVOS" ]; then
-  echo "NO existe archivo con esas características"
-  echo "Saliendo del script..."
-  sleep 2
-  exit 0
+if [[ ! "$#" -eq 3 ]]; then
+	echo -e "El script necesita si o si 3 argumentos\nSaliendo del script..."
+	exit 1
 fi
 
-echo "=== Lista de archivos candidatos con sus características ===" > "$SALIDA"
+FECHA=$(date '+%Y-%m-%d_%H-%M')
+DIRECTORIO="$1"
+TAMANIO="$2"
+DIAS="$3"
 
-# Por cada archivo obtenemos: Ruta, tamaño real, tamaño bloque, ultima
-# modificacion y el UID del usuario dueño
+if [[ -d "$DIRECTORIO" ]]; then
+	mapfile -t archivos < <(find "$DIRECTORIO" -type f -size +"${TAMANIO}"M -mtime -"${DIAS}" -print)
+else
+	echo -e "El directorio ingresado como primer argumento, no existe\nSaliendo del script..."
+	exit 1
+fi
 
-echo "$ARCHIVOS" | xargs stat -c "%n|%s|%B|%y|%u" | sort -t '|' -k 2nr,2nr |
-  gawk 'BEGIN{FS="|" ; print "FILE\t   SIZE    BLOQUE\tTIME\t\t\tUID"}{ print $1,  $2, $3, $4, $5}'|
-  tee -a "$SALIDA" > /dev/null
+if [[ "${#archivos[@]}" -eq 0 ]]; then
+	echo -e "No se encontraron archivos con esas caracteristicas\nSaliendo del script..."
+	sleep 2
+	exit 1
+else
+	TOTAL="${#archivos[@]}"
+	SALIDA="auditoria_disco_${FECHA}.log"
+	SALIDA2="Borrador.log"
+	exec 3>>"$SALIDA"
+	echo "==========AUDITORIA AVANZADA DE DISCO==========" >&3
+	echo -e "RUTA\tTAMANIO\tTAMANIO_BLOQUE\tULTIMA_MODIFICACION\tUID_PROPIETARIO\n" >&3
 
-# Cantidad de archivos candidatos
+	for archivo in "${archivos[@]}"; do
+		gawk -F "|" 'BEGIN{OFS="\t"}{
+			print $1, $2, $3, $4, $5
+		}' < <(stat -c "%n|%s|%b|%y|%u" "${archivo}") >> "$SALIDA2"
+	done
 
-CANTIDAD=$(echo "$ARCHIVOS" | wc -l)
+	sort -t $'\t' -k 2nr,2nr "$SALIDA2" >&3
+	ARCHIVO_MAYOR_TAMANIO=$(cat "$SALIDA2" | head -n 1 | gawk '{print $1}')
 
-echo "Cantidad total de archivos detectados: $CANTIDAD" | tee -a "$SALIDA" > /dev/null
 
-# Calculamos el espacio total ocupado por los archivos
+	echo -e "\n\nTOTAL DE ARCHIVOS ENCONTRADOS: '$TOTAL'" >&3
+	echo -e "\n\nEspacio total en disco: " >&3
+	echo "${archivos[@]}" | xargs du -hcb >&3
+	echo -e "\n\nArchivo con mayor tamaño:\t${ARCHIVO_MAYOR_TAMANIO}" >&3 
+	rm "$SALIDA2"
+fi
 
-TOTAL=$(echo "$ARCHIVOS" | xargs du -cbh | tail -n 1 | cut -f 1,1)
-
-echo "Espacio total consumido $TOTAL"  | tee -a "$SALIDA" > /dev/null
-
-# Archivo más grande
-
-MAYOR=$(echo "$ARCHIVOS" | xargs stat -c "%n|%s" | sort -t '|' -k 2nr,2nr | 
-   head -n 1 | gawk 'BEGIN{FS="|"} {print $1}')
-
-echo "EL archivo de mayor tamaño es: $MAYOR" | tee -a "$SALIDA" > /dev/null
-
-# Mostramos el archivo
-cat "$SALIDA"
+exec 3>&-

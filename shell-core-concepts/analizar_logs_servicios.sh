@@ -1,7 +1,10 @@
 #!/bin/bash
+### Nombre: analizar_logs_servicios.sh
+### Autor: kdefsys
 ### Script que busca la coincidencia de un patron en archivos
 ### log y log.*, el resultado lo guarda en un archivo.log con la ruta del
 ### archivo y el numero de coincidencias que tiene este.
+### USO: ./analizar_logs_servicios.sh <directorio> <patron>
 
 DIRECTORIO="${1:-.}"
 PATRON="${2:-Error}"

@@ -1,6 +1,8 @@
 #!/bin/bash
-# registro_diario.sh
-# Registra la fecha y actividad diaria en un log
+### Nombre: registro_diario.sh
+### Autor: kdefsys
+### Registra la fecha y actividad diaria en un log
+### Uso: ./registro_diario.sh
 
 LOG_FILE="actividad_diaria.log"
 FECHA=$(date '+%Y/%m/%d %H:%M:%S')

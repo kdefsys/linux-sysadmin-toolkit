@@ -1,8 +1,9 @@
 #!/bin/bash
-# usuarios_procesos.sh
-# Monitoriza los usuarios con más procesos activos (los 10 primeros)
-
-# Primero veamos todos los usuarios que hay
+### Nombre: usuarios_procesos.sh
+### Autor: kdefsys
+### Monitoriza los usuarios con más procesos activos (los 10 primeros)
+### Primero veamos todos los usuarios que hay
+### Uso: ./usuarios_procesos.sh 
 
 mapfile -t LIST_USER < <(cat /etc/passwd | gawk 'BEGIN{FS=":"}{print $1}' | sort | uniq)
 

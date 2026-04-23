@@ -1,8 +1,9 @@
 #!/bin/bash
-# limpieza_enlaces.sh
-# Encuentra enlaces simbolicos rotos dentro de un directorio crítico
-# Los elimina automáticamente
-# Genera un log de los enlaces eliminados
+### Nombre: limpieza_enlaces.sh
+### Encuentra enlaces simbolicos rotos dentro de un directorio crítico
+### Los elimina automáticamente
+### Genera un log de los enlaces eliminados
+### Uso: ./limpieza_enlaces.sh <directorio>
 
 DIRECTORIO="$1"
 LOG_FILE="enlaces_rotos.log"

@@ -1,5 +1,8 @@
 #!/bin/bash
-#Script que manda una mensajeria a otro usuario con su respectivo terminal
+### Nombre: mensajeria.sh
+### Autor: kdefsys
+###Script que manda una mensajeria a otro usuario con su respectivo terminal
+### Uso: ./mensajeria.sh
 
 read -p "Introduzca el nombre del usuario a mandar la mensajeria: " nameUser
 

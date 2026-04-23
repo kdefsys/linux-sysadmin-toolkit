@@ -1,9 +1,10 @@
 #!/bin/bash
-# auditar_archivos_criticos.sh
+### Nombre: auditar_archivos_criticos.sh
+### Autor: kdefsys
 ### En servidores compartidos, es comun que archivos criticos de configuracion
 ### o logs crezcan, cambien permisos o sean modificados fuera de horario laboral
 ### Vamos a recibir un parametro asi que ejecutar asi:
-### ./auditar_archivos_criticos.sh directorio
+### Uso: ./auditar_archivos_criticos.sh <directorio>
 
 # Recibimos como parametro un directorio base
 

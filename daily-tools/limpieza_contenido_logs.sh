@@ -1,8 +1,9 @@
 #!/bin/bash
-# Limpieza_logs.sh
-# Limpieza de logs duplicados y resumen de entradas frecuentes
-
-# Revisamos un directorio de logs y listamos todos los archivos de .log
+### Nombre: Limpieza_logs.sh
+### Autor: kdefsys
+### Limpieza de logs duplicados y resumen de entradas frecuentes
+### Revisamos un directorio de logs y listamos todos los archivos de .log
+### Uso: ./limpieza_contenido_logs.sh <directorio>
 
 FECHA=$(date '+%Y-%m-%d %H:%M:%S')
 DIRECTORIO="${1:-.}"

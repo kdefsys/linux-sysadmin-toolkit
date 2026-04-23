@@ -1,9 +1,11 @@
 #!/bin/bash
-### auditoria_avanzada.sh
+### Nombre: auditoria_avanzada.sh
+### Autor: kdefsys
 ### Este script actua como una herramienta de administracion
 ### de sistemas para localizar archivos de gran tamaño que han sido
 ### modificados recientemente, facilitando la prevencion de saturacion
 ### en los discos del servidor
+### Uso: ./auditoria_avanzada.sh <directorio> <tamanio> <dias>
 
 if [[ ! "$#" -eq 3 ]]; then
 	echo -e "El script necesita si o si 3 argumentos\nSaliendo del script..."

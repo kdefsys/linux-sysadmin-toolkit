@@ -1,70 +1,58 @@
 #!/bin/bash
-# limpieza_selectiva_archivos.sh
-### En servidores de aplicaciones:
-### .Se generan backups
-### .Drumps
-### .Archivos temporales
-### Que nadie limpia hasta que el disco colapsa
-### Parametros (2): directorio y un numero de días
+### Nombre: limpieza_selectiva_archivos.sh
+### Autor: kdefsys
+### Permite a un administrador realizar limpiezas 
+### controladas en directorios criticos (backup, temporales, dumps)
+### para evitar el colapso del almacenamiento, incluyendo una etapa
+### de confirmacion humana para mayor seguridad
+### Uso: ./limpieza_selectiva.sh <directorio> <dias>
 
-# Rescatamos los parámetros
-
-DIR="$1"
-DAY="$2"
-LOG="limpieza_$(date +%Y%m%d_%H%M).log"
-
-# Validaciones básicas
-if [[ -z "$DIR" || -z "$DAY" ]]; then
-  echo "Uso: $0 <directorio> <dias>"
-  exit 1
+if [[ ! "$#" -eq 2 ]]; then
+	echo -e "El script no recibe dos argumentos\nSaliendo del script..."
+	exit 1
 fi
 
-if [[ ! -d "$DIR" ]]; then
-  echo "El directorio no existe"
-  exit 1
+DIRECTORIO="$1"
+DIAS="$2"
+
+if [[ ! -d "$DIRECTORIO" ]]; then
+	echo -e "El directorio ingresado no existe\nSaliendo del script..."
+	exit 1
+else
+	mapfile -t archivos < <(find "$DIRECTORIO" -type f --regextype posix-extended -regex '(\.bak$|\.tmp$|\.old$|.*/.*/backup_[^/]*$)' \
+		-mtime +"$DIAS" -size +1M)
+
+	if [[ "${#archivos[@]}" -eq 0 ]]; then
+		echo -e "No hay archivos que cumplen esas caracteristicas\nSaliendo del script..."
+		exit 1
+	fi
+
+	limpieza="limpieza_$(date '+%Y-%m-%d_%H-%M').log"
+	exec 3>>"$limpieza"
+	echo -e "==========================REPORTE==============================\n" >&3
+	echo -e "FECHA DE INICIO: $(date)\nDIRECTORIO: ${DIRECTORIO}\n\n" >&3
+	echo -e "CANTIDAD DE ARCHIVOS: ${#archivos[@]}\n\nCALCULO DEL ESPACIO TOTAL EN DISCO: \n" >&3
+	echo "${archivos[@]}" | xargs du -hcb >&3
+	echo -e "ARCHIVOS CANDIDATOS:\n " >&3
+	printf "%s\n" "${archivos[@]}" >&3
+
+	### Imprimiendo en pantalla
+	cat "$limpieza"
+
+	## Menu
+	read -p "DESEA ELIMINAR LOS ARCHIVOS MOSTRADOS? (s\n): " op
+
+	if [[ "$op" = "s" || "$op" == "S" ]]; then
+		echo -e "ARCHIVOS ELIMINADOS:\n\n" >&3
+		for archivo in "${archivos[@]}"; do
+			rm -fv "$archivo" | tee -a /dev/fd/3
+		done
+	else
+		echo "El usuario cancelo el proceso de eliminacion correctamente"
+		echo "Saliendo del script..."
+		exit 1
+	fi
 fi
 
-echo "=== Limpieza iniciada: $(date) ===" | tee "$LOG"
-echo "Directorio: $DIR" | tee -a "$LOG"
-echo "Archivos mayores a $DAY dias y > 1MB" | tee -a "$LOG"
-echo
-
-# Buscamos archivos candidatos
-ARCHIVOS=$(find "$DIR" -type f \
-  \( -name "*.bak" -or -name "*.tmp" -or -name "*.old" -or -name "backup_*" \) \
-  -mtime +"$DAY" -size +1M )
-
-# Si no hay archivos, salimos
-if [[ -z "$ARCHIVOS" ]]; then
-  echo "No se encontraron archivos para limpiar"
-  exit 0
-fi
-
-# Cantidad de archivos
-CANTIDAD=$(echo "$ARCHIVOS" | wc -l)
-
-# Cantidad total usando du + tuberías
-ESPACIO_TOTAL=$(echo "$ARCHIVOS" | xargs du -cb | tail -n 1 | 
-   gawk '{print $1}')
-
-echo "Archivos candidatos: $CANTIDAD" | tee -a "$LOG"
-echo "Espacio total ocupado: $ESPACIO_TOTAL bytes" | tee -a "$LOG"
-echo
-echo "Listado de archivos:" | tee -a "$LOG"
-echo "$ARCHIVOS" | tee -a "$LOG"
-
-echo
-read -p "¿Desea eliminar estos archivos? (s/n): " RESPUESTA
-
-if [[ "$RESPUESTA" != "s" ]]; then
-  echo "Operacion cancelada por el usuario" | tee -a "$LOG"
-  exit 0
-fi
-
-# Eliminacion
-
-echo
-echo "Eliminando archivos..." | tee -a "$LOG"
-echo "$ARCHIVOS" | xargs rm -v | tee -a "$LOG"
-
-echo "=== Limpieza finalizada: $(date) ===" | tee -a "$LOG"
+echo "La tarea finalizo el $(date '+%Y-%m-%d_%H-%M-%S')"
+exec 3>&-

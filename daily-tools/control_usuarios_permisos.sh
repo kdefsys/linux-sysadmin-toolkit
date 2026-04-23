@@ -1,9 +1,10 @@
 #!/bin/bash
-# control_usuarios_permisos.sh
-# Script de control de usuarios con shell bash y permisos en carpeta compartida
-
-# Listamos todos los usuarios del sistema cuyo shell sea /bin/bash
-# Introducimos un parámetro: directorio compartido
+### Nombre: control_usuarios_permisos.sh
+### Autor: kdefsys
+### Script de control de usuarios con shell bash y permisos en carpeta compartida
+### Listamos todos los usuarios del sistema cuyo shell sea /bin/bash
+### Introducimos un parámetro: directorio compartido
+### Uso: ./control_usuarios_permisos.sh 
 
 SALIDA="usuarios_bash.txt"
 SALIDA2="archivos_no_lectura.txt"

@@ -1,8 +1,11 @@
 #!/bin/bash
+### Nombre: monitor_recursos_umbral.sh
+### Autor: kdefsys
 ### Leemos el contenido del archivo monitor.conf que tiene restricciones umbrales
 ### El script se encarga de verificar si el sistema excede o no esas restricciones
 ### Si es asi, entonces identificamos que procesos son los culpables de esto
 ### Y si no es asi, entonces mandamos una señal de todo OK
+### Uso: ./monitor_recursos_umbral.sh <archivo>
 
 FECHA=$(date '+%Y-%m-%d %H:%M:%S')
 SALIDA="alertas_recursos.log"

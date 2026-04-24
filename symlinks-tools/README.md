@@ -9,7 +9,7 @@ mantenimiento de servidores.
 # Contenido
 
 - [auditar_symlinks_rotos.sh](#auditar_symlinks_rotossh)
-- [limpieza_symlinks_huerfanos.sh](#limpieza_symlinks_huerfanossh)
+- [revinculacion_inteligente.sh](#revinculacion_inteligentesh)
 - [verificar_y_reconstruir_symlinks.sh](#verificar_y_reconstruir_symlinkssh)
 ________________________________________________________________________________________________
 
@@ -50,35 +50,50 @@ ________________________________________________________________________________
 
 _________________________________________________________________________________________________
 
-## **limpieza_symlinks_huerfanos.sh**
-   Nivel Intermedio/Avanzado **temas:**
-   enlaces simbólicos, interacción con usuario, logging, control de flujo
+## **revinculacion_inteligente.sh**
+   Nivel Avanzado **temas:** symlink Management, Heuristic File Search, Namerefs (local -n),
+   Forensic Recovery
 
    Descripción Técnica:
-   Este script identifica enlaces simbólicos huérfanos dentro de un directorio
-   y permite realizar una **limpieza controlada**
-   Para cada enlace roto encontrado, el script:
-   - Muestra la ruta del enlace y su destino inexistente
-   - Solicita confirmación al usuario para eliminar o ignorar el enlace
-   - Registra la acción tomada en un archivo de log
-   No se elimina ningún enlace sin confirmación explicíta del administrador
+   Este script es una utilidad de autorrecuperación y mantenimiento proactivo para sistemas Linux. 
+   Su objetivo principal no es solo auditar enlaces simbólicos rotos, sino actuar como un motor de reparación 
+   heurística.
+   El script identifica enlaces "huérfanos" (dangling symlinks), extrae el nombre del archivo original mediante 
+   expansión de parámetros de shell y realiza una búsqueda exhaustiva en el sistema de archivos para localizar 
+   posibles nuevas ubicaciones del archivo perdido. Mediante una interfaz interactiva, permite al administrador 
+   re-vincular de forma atómica el enlace a su nueva ruta, eliminando la necesidad de intervención manual de 
+   búsqueda y creación.
 
    Uso Típico en las empresas:
-   - Limpieza segura en servidores legacy
-   - Mantenimiento de carpetas compartidas
-   - Reducción de errores en scripts y aplicaciones
-   - Prevención de referencias inválidas en sistemas productivos
-   Este enfoque interactivo es habitual cuando se trabaja en sistemas críticos
-   donde no se permite eliminación automática
+   En infraestructuras empresariales con servidores de larga trayectoria o entornos de desarrollo compartidos, 
+   los archivos suelen moverse de particiones o directorios debido a políticas de ordenamiento o migraciones de 
+   almacenamiento. Contextos específicos:
+   - Post-Migración de Almacenamiento: Cuando se mueven carpetas de /opt a /mnt/data y cientos de scripts o 
+   configuraciones quedan con rutas inválidas.
+   - Soporte Técnico de Nivel 2: Para diagnosticar por qué un software falló tras una actualización que cambió 
+   la estructura de librerías o binarios.
+   - Limpieza de Servidores Legados: En máquinas antiguas donde se acumulan miles de enlaces y no se sabe con 
+   certeza cuáles son prescindibles y cuáles simplemente están desorientados.
+
+   Problemas que resuelve: Reduce el tiempo de inactividad (downtime) causado por errores de "File not found", 
+   evita la pérdida de configuraciones críticas y automatiza la tarea tediosa de buscar archivos movidos manualmente.
+
+   Ejemplo de Ejecución:
+
+   ./revinculacion_inteligente.sh /home/usuario/proyectos
 
    Curiosidad Técnica:
-   - Detección de symlinks rotos con 'find'
-   - Lectura de entrada del usuario con 'read -n1'
-   - bucles 'while' + 'case¿ para control interactivo
-   Este patrón es muy común en scripts administrativos que requieren decisiones
-   humanas.
+   El script implementa varias técnicas de "Bash Moderno" que lo hacen destacar:
+   - Paso por Referencia (local -n Lista=$1): Utiliza namerefs para trabajar directamente con el array definido 
+   fuera de la función. Esto evita la "explosión de argumentos" y permite que la función sea mucho más eficiente y
+   limpia al manipular estructuras de datos complejas.
+   - Expansión Forense (${archivo_destino##*/}): En lugar de llamar al comando externo basename (lo cual crea un 
+   proceso nuevo y consume recursos), utiliza la expansión de parámetros interna de Bash para obtener el nombre del 
+   archivo instantáneamente.
+   - Reparación Atómica con ln -sf: El uso de la bandera -f (force) es clave; permite sobrescribir el enlace simbólico 
+   roto en una sola operación sin tener que ejecutar un rm previo, asegurando que el nombre del enlace se mantenga intacto.
 
-_____________________________________________________________________________
+__________________________________________________________________________________________________________________________
 
 ## **verificar_y_reconstruir_symlinks.sh**
    Nivel Avanzado **Temas:**

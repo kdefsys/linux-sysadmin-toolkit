@@ -11,20 +11,22 @@ mantenimiento de servidores.
 - [auditar_symlinks_rotos.sh](#auditar_symlinks_rotossh)
 - [limpieza_symlinks_huerfanos.sh](#limpieza_symlinks_huerfanossh)
 - [verificar_y_reconstruir_symlinks.sh](#verificar_y_reconstruir_symlinkssh)
-_____________________________________________________________________________
+________________________________________________________________________________________________
 
 ## **auditar_symlinks_rotos.sh**
    Nivel Intermedio **Temas:** enlaces simbólicos,
    find, readlink, logs, validaciones
 
    Descripción Técnica:
-   Este script audita un directorio dado y detecta **enlaces simbólicos rotos**,
-   es decir, symlinks cuyo destino ya no existe en el sistema
-   Para cada enlace roto encontrado, el script registra:
-    - La ruta del enlace simbólico
-    - El destino esperado almacenado en el symlink
-   Los resultados se guardan en un archivo de log con marca de tiempo,
-   permitiendo revisar posteriormente el estado del sistema.
+   Este script es una herramienta de administración de sistemas diseñada para la detección 
+   y limpieza proactiva de enlaces simbólicos huérfanos (broken symlinks). El programa recorre 
+   de forma recursiva un directorio proporcionado por el usuario, identifica aquellos enlaces 
+   cuyo destino ya no existe en el sistema de archivos y genera un reporte detallado (log) 
+   utilizando descriptores de archivos personalizados.
+
+   Además, ofrece una capa interactiva que permite al administrador decidir si desea eliminar 
+   los enlaces detectados, garantizando que el sistema de archivos se mantenga limpio y libre de 
+   referencias inválidas que puedan causar errores en aplicaciones o procesos de respaldo
 
    Uso Típico en las empresas:
    - Auditorías de integridad antes de backups
@@ -34,13 +36,19 @@ _____________________________________________________________________________
    Este tipo de auditoría es común antes de migraciones, upgrades o mantenimientos
    programados
 
+   Ejemplo de Ejecución:
+
+   chmod u+x auditar_symlinks_rotos.sh
+
+   ./auditar_symlinks_rotos.sh /var/www/html/assets
+
    Curiosidad Técnica:
    - 'find type l -not -exec test -e {} \;' para detectar symlinks rotos
    - 'readlink' para obtener el destino del enlace aunque el destino no exista
    Esto demuestra que un symlink siempre conserva la ruta destino como texto,
    independientemente de si el archivo real sigue presente 
 
-_____________________________________________________________________________
+_________________________________________________________________________________________________
 
 ## **limpieza_symlinks_huerfanos.sh**
    Nivel Intermedio/Avanzado **temas:**

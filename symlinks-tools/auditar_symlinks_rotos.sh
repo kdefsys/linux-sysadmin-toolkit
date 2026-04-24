@@ -1,36 +1,56 @@
 #!/bin/bash
-# auditar_symlinks_rotos.sh
-## Para ejecutar este script debes poner un directorio como parametro
-## De esta forma: ./auditar_symlinks_rotos.sh directorio
+### Nombre: auditar_symlinks_rotos.sh
+### Autor: kdefsys
+### Identifica y registra todos los enlaces simbólicos rotos dentro de un directorio
+### específico proporcionado por el usuario
+### Uso: ./auditar_symlinks_rotos.sh <directorio>
+
+if [[ "$#" -ne 1 ]]; then
+	echo -e "El script no tiene ningun argumento\nSaliendo del script..."
+	exit 1
+fi
 
 DIRECTORIO="$1"
-FECHA=$(date +'%Y-%m-%d\%H:%M:%S')
-SALIDA="archivo$FECHA.log"
+FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
 
-# Verificamos si el directorio existe o no
+if [[ -d "$DIRECTORIO" ]]; then
 
-if [ ! -d "$DIRECTORIO" ]; then
-	echo "El directorio ingresado no existe"
-	echo "Salimos del script"
-	exit
+	SALIDA="auditoria_enlaces_rotos_${FECHA}.log"
+
+	exec 3>>"$SALIDA"
+
+	echo -e "=============================Enlaces rotos en ${DIRECTORIO}===============================" >&3
+
+	mapfile -t enlaces_rotos < <(find "$DIRECTORIO" -type l -not -exec test -e {} \; -print)
+
+	if [[ "${#enlaces_rotos[@]}" -eq 0 ]]; then
+		echo "No hay enlaces rotos" >&3
+	else
+		for enlace in "${enlaces_rotos[@]}"; do
+			archivo_destino=$(readlink "$enlace")
+			printf "Ruta de enlace:%s\tArchivo Destino:%s\n" "${enlace}" "${archivo_destino}" >&3
+		done
+		read -p "Desea eliminar estos enlaces? (s/n): " opcion
+		case "$opcion" in
+			s|S)
+				for enlace in "${enlaces_rotos[@]}"; do
+					if rm -iv "$enlace"; then
+						echo "Enlace: $enlace eliminado del sistema" >&3
+					fi
+				done ;;
+			*)
+				echo "No hay proceso de eliminación"
+				;;
+		esac
+	fi
+
+else
+	echo -e "El directorio ingresado como primer argumento no existe\nSaliendo del script..."
+	exit 1
 fi
 
-# Buscamos todos los enlaces simbólicos rotos dentro de ese directorio
-
-enlaces_rotos=$(find "$DIRECTORIO" -type l -not -exec test -e {} \; -print)
-
-if [ -z "$enlaces_rotos" ]; then
-	echo "No existen enlaces rotos"
-	echo "Salimos del script"
-	exit
-fi
-
-# Mostramos en pantalla la ruta del enlace y su destino esperado
-
-for ruta in $enlaces_rotos; do
-	echo "Ruta: $ruta Destino: $(readlink $ruta)" >> "$SALIDA"
-done
-
-# Mostramos el contenido de ese archivo
+echo -e "El contenido completo del archivo log resultante es:"
 
 cat "$SALIDA"
+
+exec 3>&-

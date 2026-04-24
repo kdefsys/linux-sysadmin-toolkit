@@ -11,6 +11,7 @@ shell bash, de la línea de comandos y de scripting.
 - [analizar_logs_servicios.sh](#analizar_logs_serviciossh)
 - [limpieza_selectiva_archivos.sh](#limpieza_selectiva_archivossh)
 - [auditoria_avanzada.sh](#auditoria_avanzadash)
+- [log_rote.sh](#log_rotesh)
 _____________________________________________________________________________
 
 ## **auditar_archivos_criticos.sh**
@@ -166,3 +167,50 @@ _____________________________________________________________________________
    - Qué servicios están causando el crecimiento
 
 _____________________________________________________________________________
+
+## **log_rote.sh**
+   Nivel Intermedio-Avanzado **Temas:** mapfile, file Descriptors, Globbing, Compresion (gzip)
+   y Gestión de Rutas Dinámicas
+
+   Descripción Técnica:
+   Este script es una utilidad de administración de sistemas diseñada para la rotación automatizada 
+   de archivos de registro. Su objetivo principal es evitar la saturación de los sistemas de archivos 
+   mediante la identificación de logs antiguos (basándose en su fecha de última modificación), su 
+   compresión individual para reducir el espacio en disco y su posterior organización en directorios 
+   de histórico fechados. El script implementa un sistema de auditoría mediante un descriptor de archivo 
+   independiente para registrar cada acción realizada.
+
+   Uso Típico en empresas:
+   En entornos de producción, las aplicaciones (como servidores Apache, Nginx o microservicios en Java/Python) 
+   generan gigabytes de registros de acceso (access.log) y errores (error.log) diariamente. Sin un sistema de rotación:
+
+   - Saturación de Disco: Un solo archivo de log podría llenar el almacenamiento provocando la caída
+   de los servicios
+   - Degradación de Performance: Abrir o buscar dentro de archivos de texto de varios gigabytes es
+   ineficiente para el sistema operativo.
+
+   Problemas que resuelve:
+   - Automatiza la limpieza sin intervención manual del SysAdmin
+   - Mantiene la trazabilidad de los logs viejos comprimiéndolos, permitiendo consultarlos en el futuro si hay
+   auditorías legales o técnicas.
+   - Separa los registros críticos de la consola mediante un flujo de log propio (rotacion_ejecucion.log)
+
+   Ejemplo de ejecución:
+
+   chmod u+x log_rote.sh
+
+   ./log_rote.sh /var/log/myapp 7
+
+   Curiosidad Técnica:
+   - exec 3>>"$REPORTE": Abre el descriptor de archivo 3 apuntando al log. Esto permite usar >&3 en cualquier
+   parte del código para escribir en el log sin tener que abrir y cerrar el archivo constantemente o usar >>
+   - mapfile -t archivos_logs < <(find ...): Es la forma más eficiente de capturar la salida de un comando en un arreglo. 
+   Evita problemas con nombres de archivos que contienen espacios y es mucho más rápido que leer línea por línea en un 
+   bucle while.
+   - xargs -0 gzip: Se utiliza printf "%s\0" combinado con xargs -0 para procesar archivos de forma segura. El carácter 
+   nulo \0 garantiza que el script no falle incluso si los archivos tienen caracteres especiales o espacios en sus rutas.
+   - Gestión de Bloques (The Space Paradox): Es importante notar que en archivos muy pequeños (pocos KB), el tamaño reportado 
+   por du puede parecer mayor tras la rotación. Esto se debe al overhear del sistema de archivos: cada nuevo archivo comprimido 
+   y el directorio de destino ocupan al menos un bloque de disco (usualmente 4KB), independientemente del peso real de los datos.
+
+__________________________________________________________________________________________________________________________________

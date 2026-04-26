@@ -1,8 +1,0 @@
-==========================AUDITORIA DE SETUID Y SETGID=======================
-
-FECHA: 2026-04-26_04-42-58
-DIRECTORIO QUE FUE EXAMINADO: /home/admin/directorio
-RUTA: /home/admin/directorio/archivo1.txt	PROPIETARIO: admin	GRUPO: admin	PERMISOS: 4764	ESTADO: CRITICO
-
-RUTA: /home/admin/directorio/archivo2.txt	PROPIETARIO: admin	GRUPO: admin	PERMISOS: 2674	ESTADO: CRITICO
-

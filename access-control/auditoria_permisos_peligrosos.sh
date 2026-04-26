@@ -35,11 +35,11 @@ if [[ -d "$DIRECTORIO" ]]; then
 			if($1 ~ "^" array_rutas[indice]) ESTADO="OK"
 		}
 		if(ESTADO == "NOSE") ESTADO="CRITICO"
-		printf "RUTA: %s\tPROPIETARIO: %s\tGRUPO: %s\tPERMISOS: %s\tESTADO: %s\n\n" "$1" "$2" "$3" "$4" ESTADO >> ruta
+		printf("RUTA: %s\tPROPIETARIO: %s\tGRUPO: %s\tPERMISOS: %s\tESTADO: %s\n\n", $1, $2, $3, $4, ESTADO)>> ruta
 	}' < <(printf "%s\n" "${archivos_peligrosos[@]}")
 
 else
-	echo "El directorio ingresado no existe\nSaliendo del script" >> "$SALIDA"
+	echo -e "El directorio ingresado no existe\nSaliendo del script" >> "$SALIDA"
 fi
 echo -e "\nAuditoría completada con éxito."
 echo -e "Se han analizado ${#archivos_peligrosos[@]} archivos sospechosos."

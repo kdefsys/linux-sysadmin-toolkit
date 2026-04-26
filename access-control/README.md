@@ -2,7 +2,7 @@
 
 Este directorio contiene scripts de **auditoría y control de accesos en sistemas Linux**, centrados en permisos de archivos, usuarios y privilegios. 
 
-Incluye herramientas para:
+Incluye herramientas para:<
 
 - Detectar archivos con **SETUID y SETGID activos** y clasificarlos según su ubicación.
 - Identificar archivos o directorios **world-writable** y verificar la presencia del **sticky bit** en directorios compartidos.  
@@ -19,46 +19,49 @@ Los scripts generan logs detallados con información útil para **auditorías de
 -------------------------------------------------------------------------------------------------------------
 
 ## **auditoria_permisos_peligrosos.sh**
-  Nivel Intermedio **Temas:** SETUID, SETGID, permisos de archivos, auditoría de seguridad en Linux
+  Nivel Intermedio-Avanzado **Temas:** Seguridad en Linux, Privilegios Especiales (SUID,SGID), automatizacion con Bash, Procesamiento de datos con GAWK
 
 ---
 
   Descripción Técnica:
 
-Este script realiza una **auditoría completa de archivos con bits SETUID o SETGID activos** en un directorio dado o en todo el sistema.  
-Genera un log con información detallada de cada archivo encontrado:
+Este script es una herramienta de auditoría de seguridad forense diseñada para localizar y clasificar archivos que poseen los bits de permisos SETUID (4000) o 
+SETGID (2000). Estos bits son críticos porque permiten que un usuario común ejecute un programa con los privilegios del dueño (root) o del grupo del archivo.
 
-- Ruta completa
-- Usuario propietario
-- Grupo propietario
-- Permisos en notación octal
-- UID del propietario
-
-Además, clasifica los archivos en:
-
-- [OK] → Archivos ubicados en rutas estándar ('/bin', '/sbin', '/usr/bin', '/usr/sbin', '/lib', '/lib64', '/usr/lib', '/usr/lib64').  
-- [CRITICO] → Archivos fuera de las rutas estándar, que podrían representar un **riesgo de seguridad**.
-
-El script utiliza:
-
-- **find**: para localizar archivos con permisos SETUID/SETGID.
-- **stat**: para extraer información completa de cada archivo.
-- **expresiones regulares y bucles**: para clasificar los archivos según su ubicación. 
-- **logs con timestamp**: cada ejecución genera un archivo único, evitando sobrescribir resultados anteriores.
+El script escanea un directorio específico de forma recursiva y cruza los resultados con una "Whitelist" (Lista Blanca) de rutas estándar del sistema (como /bin, 
+/usr/lib, etc.). Su objetivo principal es detectar "binarios de escalada de privilegios" que un atacante o un software malicioso podría haber plantado en directorios 
+inusuales (como /tmp, /var/www o /home) para obtener control total del servidor.
 
 ---
 
-  Uso Típico en las Empresas:
+  Uso Típico en las empresas:
 
-- **Auditorías de seguridad periódicas:** Permite a un sysadmin identificar archivos que podrían ser usados para elevación de privilegios.  
-- **Prevención de ataques internos:** Detecta archivos con permisos especiales fuera de rutas estándar que podrían ser modificados o explotados por usuarios maliciosos.  
-- **Automatización:** Se puede ejecutar periódicamente mediante cron jobs o integrarse en scripts de gestión de seguridad centralizada.  
-- **Contexto real:** Empresas con múltiples servidores o aplicaciones críticas pueden detectar rápidamente configuraciones inseguras antes de que sean explotadas.
+En el entorno corporativo y de centros de datos, este script se utiliza como parte de las rutinas de Monitoreo de Integridad de Archivos (FIM) y auditorías de cumplimiento 
+normativo (como PCI-DSS o ISO 27001).
 
-**Ejemplo de ejecución:**
+Contexto específico: Las empresas lo ejecutan mediante tareas cron o herramientas de orquestación (Ansible/Puppet) justo después de realizar actualizaciones de software o de
+ forma periódica para asegurar que ningún binario nuevo haya adquirido privilegios elevados de forma no autorizada.
 
- `bash
-sudo ./auditoria_permisos_peligrosos.sh /
+Problemas que resuelve:
+
+  - Detección de Backdoors: Identifica archivos sospechosos que permiten a un usuario normal convertirse en root.
+  - Control de Configuración: Detecta cuando un administrador ha instalado herramientas con permisos incorrectos que violan la política de seguridad.
+  - Reducción de la Superficie de Ataque: Ayuda a los equipos de seguridad a identificar binarios innecesarios que tienen el bit SUID activo y que podrían ser explotados.
+
+  Ejemplo de Ejecución:
+
+  chmod u+x auditoria_permisos_peligrosos.sh
+
+  sudo ./auditoria_permisos_peligrosos.sh /
+
+  Curiosidad Técnica:
+  El script destaca por su alta eficiencia al combinar comandos avanzados que evitan la sobrecarga del procesador
+  - find ... -exec stat ... {} +; En lugar de ejecutar stat una vez por cada archivo encontrado.
+  - mapfile -t: Carga todos los resultados de una sola vez en un array de Bash, evitando el uso de bucles while que son mas lentos
+  - Concatenación Dinámica en gawk ("^" array_rutas[indice]): Dentro del motor de gawk, el script construye expresiones regulares "al vuelo". Al usar el símbolo ^, el script
+  realiza una comparación de prefijo: verifica si la ruta del archivo comienza por una de las rutas seguras, permitiendo validar subdirectorios de forma inteligente sin
+  necesidad de listar cada archivo individualmente.
+
 
 ______________________________________________________________________________________________________________
 

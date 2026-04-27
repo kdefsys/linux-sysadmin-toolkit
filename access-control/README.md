@@ -139,66 +139,39 @@ Salida de ejemplo:
 ______________________________________________________________________________________________________________
 
 ## **auditoria_usuarios_privilegios.sh** 
-  Nivel Intermedio **Temas:** usuarios, UIDs, privilegios, auditoría de cuentas, administración de Linux
+  Nivel Avanzado **Temas:** Seguridad de identidades, Gestión de /etc/shadow, Funciones con paso por referencia (local -n), Auditoría de sistemas
 
 ---
 
    Descripción Técnica:
 
-Este script realiza una **auditoría completa de los usuarios y privilegios del sistema**, analizando los archivos clave '/etc/passwd', '/etc/shadow' y '/etc/group'.
-
-Para cada usuario, genera un reporte con:
-
-- Usuario
-- UID
-- Shell
-- Home
-- Naturaleza del usuario (humano o sistema)
-- Estado de contraseña
-- Estado del shell y home
-
-Detecta automáticamente situaciones críticas, incluyendo:
-
-- Usuarios con UID 0 que no sean 'root' → riesgo de **privilegios indebidos**. 
-- Cuentas sin contraseña o bloqueadas incorrectamente → riesgo de **acceso no autorizado**.
-- Usuarios sin home válido o con shell inexistente → posible **inconsistencia o configuración incorrecta**.
-
-El log generado tiene **fecha y hora**, evitando sobrescribir auditorías previas y facilitando revisiones periódicas.
+   Este script realiza una inspección profunda de la base de datos de usuarios de un sistema Linux. A diferencia de un listado simple, el script cruza información de 
+   /etc/passwd y /etc/shadow para evaluar la salud de cada cuenta. Su objetivo es detectar tres vectores de riesgo principales: escalada de privilegios (usuarios con UID 0
+   que no son root), debilidad de acceso (contraseñas vacías o cuentas mal bloqueadas) e inconsistencias de configuración (rutas de shell o directorios home que no existen 
+   físicamente).
+   El script destaca por su arquitectura modular, utilizando funciones independientes para evaluar la seguridad de la cuenta y la integridad de la configuración, lo que facilita 
+   su mantenimiento y escalabilidad.
 
 ---
 
    Uso Típico en las Empresas:
+   En un entorno corporativo de TI o ciberseguridad, este script es fundamental para el cumplimiento de normativas de control de acceso.
+   - Contexto de uso: Se utiliza habitualmente en procesos de Onboarding/Offboarding de empleados para verificar que no queden cuentas activas sin contraseña, y en auditorías 
+   de SRE (Site Reliability Engineering) para asegurar que las cuentas de servicio del sistema tengan sus rutas técnicas (home y shell) correctamente configuradas.
+   - Detección de "Backdoor Users": Encuentra atacantes que hayan creado usuarios con UID 0 para tener privilegios de root sin usar la cuenta oficial.
+   - Limpieza de Cuentas Huérfanas: Identifica cuentas de antiguos empleados cuyo directorio home ha sido borrado pero el usuario sigue existiendo en el sistema.
+   - Cumplimiento de Políticas de Password: Asegura que no existan cuentas críticas con el campo de contraseña en blanco, lo que permitiría el acceso sin credenciales.
 
-- **Auditorías internas de cuentas:** Garantiza que solo 'root' tenga privilegios de administrador y que todas las cuentas de usuario sean válidas.
-- **Prevención de brechas de seguridad:** Detecta cuentas huérfanas, sin home, con shell inválida o con privilegios indebidos.
-- **Cumplimiento de normativas:** Útil para empresas que requieren auditorías periódicas de usuarios por estándares internos o externos.
-- **Automatización:** Se puede integrar en scripts de gestión de usuarios o cron jobs para revisiones regulares.
+   Ejemplo de ejecución:
 
-**Ejemplo de ejecución:**
+   sudo ./auditoria_usuarios_privilegios.sh
 
-  bash
-sudo ./auditoria_usuarios_privilegios.sh
+   Curiosidad Técnica:
+   - Rangos de UID: 1000–60000 → usuarios humanos <1000 → usuarios del sistema Esto permite diferenciar cuentas normales de cuentas del sistema automáticamente.
+   - Verificación de contraseña: contrasenia=$(getent shadow "$name" | cut -d ":" -f 2), forma profesional de consultar bases de datos administrativas.
+   - Chequeo de shell y home: [ ! -e "$shell" ] → shell inexistente [ ! -d "$home" ] → home inexistente
+   - Identifica configuraciones sospechosas o inconsistentes en usuarios.
+   - Logs con timestamp: usuarios_privilegios_YYYY-MM-DD_HH-MM-SS.log permite mantener historial de auditorías y revisiones periódicas.
+   - regex [[ "$5" =~ "^(!|\*) ]]"
 
-  Curiosidad Técnica:
-
-- Rangos de UID: 1000–60000 → usuarios humanos
-<1000 → usuarios del sistema
-Esto permite diferenciar cuentas normales de cuentas del sistema automáticamente.
-
-- Verificación de contraseña: contra=$(gawk -F: -v u="$usuario" '$1==u {print $2}' /etc/shadow)
-Detecta si la contraseña está vacía, bloqueada (! o *) o correcta.
-
-- Chequeo de shell y home:
-[ ! -e "$shell" ] → shell inexistente
-[ ! -d "$home" ] → home inexistente
-
--Identifica configuraciones sospechosas o inconsistentes en usuarios.
--Logs con timestamp:
-usuarios_privilegios_YYYY-MM-DD_HH-MM-SS.log permite mantener historial de auditorías y revisiones periódicas.
-
-  Salida de ejemplo:
-
-juan::1001::/bin/bash::/home/juan::HUMANA::OK::BIEN HECHO
-backup::0::/usr/sbin/nologin::/var/backup::sistema::CRITICO POR ESCALA DE PRIVILEGIO::BIEN HECHO
-maluser::1002::/bin/fakeshell::/home/maluser::HUMANA::OK::SOSPECHOSO(NO EXISTE SU SHELL)
-
+___________________________________________________________________________________________________________________________________________________________________________

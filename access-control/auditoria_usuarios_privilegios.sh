@@ -1,41 +1,65 @@
 #!/bin/bash
-# auditoria_usuarios_privilegios.sh
-## Este Script audita la consistencia de usuarios y privilegios del sistema
+### Nombre: auditoria_usuarios_privilegios
+### Autor: kdefsys
+### La gestion de usuarios es una de las áreas más críticas de la administración de sistemas. Un usuario con UID 0 que no sea root,
+### una contraseña vacia o un shell inexsitente son indicadores de una mala configuración o de un sistema comprometido.
+### Este script analiza archivos /etc/passwd y /etc/shadow para clasificar a los usuarios y detectar anomalías de seguridad.
+### Uso: sudo ./auditoria_usuarios_privilegios
 
-if [[ $EUID -ne 0 ]]; then
-  echo "Este script debe de ejecutarse con privlegios de superusuario"
-  echo "Saliendo del script"
-  exit
+if [[ "$EUID" -ne 0 ]]; then
+	echo -e "El script debe ejecutarse con privilegios de superusuario\nSaliendo del script..."
+	exit 1
 fi
 
-FECHA=$(date +'%Y-%m-%d_%H-%M-%S')
-SALIDA="usuarios_privilegios_$FECHA.log"
+FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
+REPORTE="usuarios_privilegios_${FECHA}.log"
 
-echo "===Usuarios Humanos===" > "$SALIDA"
+echo -e "======================================REPORTE DE CONFIGURACION DE USUARIOS CON PRIVILEGIOS=====================================\n\n" > "$REPORTE"
+function seguridad_de_cuenta {
+	local -n Natural=$3
+	local -n Estad=$4
 
-while read usuario uid shell home; do
-  contra=$(gawk -F: -v u="$usuario" '$1==u {print $2}' /etc/shadow)
-  if (( uid >= 1000 && uid <= 60000 )); then
-     naturaleza="HUMANA"
-  else
-     naturaleza="sistema"
-  fi
-  if [ "$uid" -eq 0 ] && [ "$usuario" !=  "root" ]; then
-     estado1="CRITICO POR ESCALA DE PRIVILEGIO"
-  elif [[ "$contra" == "" ]]; then
-     estado1="CRITICO POR CONTRASEÑA VACIA"
-  elif [[ "$contra" == "!"* || "$contra" == "*"* ]]; then
-     estado1="Bloqueada"
-  else
-     estado1="OK"
-  fi
-  if [ ! -e "$shell" ]; then
-	estado2="SOSPECHOSO(NO EXISTE SU SHELL)"
-  elif [ ! -d "$home" ]; then
-	estado2="SOSPECHOSO(NO EXISTE SU HOME)"
-  else estado2="BIEN HECHO"
-  fi
-  echo "$usuario::$uid::$shell::$home::$naturaleza::$estado1::$estado2" >> "$SALIDA"
-done < <(gawk 'BEGIN{FS=":"} {print $1, $3, $7, $6}' /etc/passwd)
+	if [[ "$2" -ge 1000 && "$2" -le 60000 ]]; then
+		Natural="HUMANA"
+	else
+		Natural="sistema"
+	fi
 
+	if [[ "$2" -eq 0 && "$1" != "root" ]]; then
+		Estad="Crítico por no ser root"
+	else
+		if [[ -z "$5" ]]; then
+			Estad="CRITICO por contrasenia vacía"
+		elif [[ "$5" =~ "^(!|\*)" ]]; then
+			Estad="BLOQUEADA"
+		else
+			Estad="OK"
+		fi
+	fi
+
+}
+
+function seguridad_de_configuracion {
+	local -n Estad2=$3
+
+	if [[ ! -e "$1" ]]; then
+		Estad2="SOSPECHOSO (shell no existente)"
+	elif [[ ! -d "$2" ]]; then
+		Estad2="SOSPECHOSO (home no existente)"
+	else
+		Estad2="BIEN"
+	fi
+}
+
+while IFS=":" read -r name uid shell direhome; do
+
+	contrasenia=$(getent shadow "$name" | cut -d ":" -f 2)
+	Naturaleza="ok"
+	Estado="ok"
+	Estado2="ok"
+	seguridad_de_cuenta "$name" "$uid" Naturaleza Estado "$contrasenia"
+	seguridad_de_configuracion "$shell" "$direhome" Estado2
+	printf "%s::%s::%s::%s::%s::%s::%s\n" "$name" "$uid" "$shell" "$direhome" "$Naturaleza" "$Estado" "$Estado2" | tee -a "$REPORTE" &> /dev/null
+
+done < <(gawk -F ":" 'BEGIN{OFS=":"} {print $1, $3, $7, $6}' /etc/passwd)
 

@@ -66,29 +66,29 @@ Problemas que resuelve:
 ______________________________________________________________________________________________________________
 
 ## **detector_permisos_inseguros.sh** 
-  Nivel Intermedio **Temas:** permisos de archivos, world-writable, sticky bit, auditoría de seguridad en    Linux
+  Nivel Avanzado **Temas:** Gestión de permisos especiales (sticky bit), Procesamiento de Opciones (getopts), Auditoría Recursiva, Referencia de variables.
 
 ---
 
   Descripción Técnica:
+  Este script es una herramienta de auditoría avanzada diseñada para identificar fallos de seguridad en los permisos del sistema de archivos. Se centra en la 
+  detección de archivos con permisos de lectura/escritura para "otros" (world-writable) y en la verificación de la presencia del Sticky Bit en directorios críticos.
+  El script utiliza una arquitectura modular basada en funciones y una interfaz de comandos profesional mediante getopts. Su objetivo es prevenir la manipulación no 
+  autorizada de archivos en entornos compartidos, asegurando que solo los propietarios de los archivos puedan eliminarlos en directorios temporales o compartidos.
 
-Este script analiza un **directorio dado** para detectar archivos o directorios con **permisos inseguros** que podrían comprometer la seguridad del sistema.  
-Genera un log con información detallada de cada elemento inseguro, incluyendo:
+  - Ruta completa
+  - Permisos en formato legible ('-rw-rw-rw-')
+  - Propietario
+  - UID
+  - GID
+  - Tipo de archivo (regular, directorio, symlink, etc.)
 
-- Ruta completa
-- Permisos en formato legible ('-rw-rw-rw-')
-- Propietario
-- UID
-- GID
-- Tipo de archivo (regular, directorio, symlink, etc.)
-
-Además, verifica directorios **especiales de uso compartido** ('/tmp', /var/tmp', '/shared') y comprueba si **tienen activo el sticky bit**. Si no lo tienen, los marca como [CRITICO].
-
-El script soporta **opciones de línea de comando**:
-
-- -d <directorio> → Analiza archivos world-writable en ese directorio.
-- -c → Verifica directorios especiales con sticky bit.
-- -f <directorio> → Permite **activar el sticky bit automáticamente** con confirmación del usuario.
+  Además, verifica directorios **especiales de uso compartido** ('/tmp', /var/tmp', '/shared') y comprueba si **tienen activo el sticky bit**. Si no lo tienen, los marca 
+  como [CRITICO].
+  El script soporta **opciones de línea de comando**:
+  - -d <directorio> → Analiza archivos world-writable en ese directorio.
+  - -c → Verifica directorios especiales con sticky bit.
+  - -f <directorio> → Permite **activar el sticky bit automáticamente** con confirmación del usuario.
 
 ---
 
@@ -99,42 +99,29 @@ El script soporta **opciones de línea de comando**:
 - **Gestión de permisos automatizada:** Con la opción '-f', se puede aplicar sticky bit de manera controlada y segura.
 - **Contexto real:** En servidores multiusuario, entornos de desarrollo compartidos o sistemas con carpetas temporales públicas, este script ayuda a **reducir vectores de ataque locales** y mantener la integridad de los datos.
 
-**Ejemplo de ejecución:**
+   Ejemplo de ejecución:
 
-  bash
+   Detectar archivos world-writable en /home:
 
-  Detectar archivos world-writable en /home:
+   ./detector_permisos_inseguros.sh -d /home
 
-./detector_permisos_inseguros.sh -d /home
+   Verificar directorios especiales con sticky bit:
 
- Verificar directorios especiales con sticky bit:
+   ./detector_permisos_inseguros.sh -c
 
-./detector_permisos_inseguros.sh -c
+   Aplicar sticky bit a /tmp si falta:
 
-  Aplicar sticky bit a /tmp si falta:
-
-./detector_permisos_inseguros.sh -f /tmp
+   ./detector_permisos_inseguros.sh -f /tmp
 
    Curiosidad Técnica:
-
-find "$DIR" -type f \( -perm -o=r -and -perm -o=w \)
-Busca archivos que son world-readable y world-writable, indicando riesgos de acceso externo.
-
-Sticky bit (-k)
-El script usa [ -k "$directorio" ] para detectar si un directorio compartido solo permite que el propietario de un archivo lo borre, evitando que otros usuarios eliminen archivos ajenos.
-
-stat -c "%n|%A|%U|%u|%g|%F"
-Obtiene información completa de cada archivo, incluyendo permisos legibles, propietario, UID, GID y tipo de archivo.
-
-Logs con timestamp
-Cada ejecución genera un archivo único: detector_YYYY-MM-DD_HH-MM-SS.log, facilitando auditorías periódicas sin sobrescribir resultados previos.
-
-Salida de ejemplo:
-
-=====Búsqueda de archivos inseguros=====
-/home/usuario/test.txt|-rw-rw-rw-|usuario|1001|1001|regular file
-[CRITICO] /shared/datos_compartidos|-rwxrwxrwx|admin|0|0|directory
-[OK] /tmp/logs_temp|-rwxrwxrwt|root|0|0|directory
+   - find "$DIR" -type f \( -perm -o=r -and -perm -o=w \) Busca archivos que son world-readable y world-writable, indicando riesgos de acceso externo.
+   - Sticky bit (-k) El script usa [ -k "$directorio" ] para detectar si un directorio compartido solo permite que el propietario de un archivo lo borre, 
+   evitando que otros usuarios eliminen archivos ajenos.
+   - stat -c "%n|%A|%U|%u|%G|%F": Obtiene información completa de cada archivo, incluyendo permisos legibles, propietario, UID, GID y tipo de archivo.
+   - Logs con timestamp Cada ejecución genera un archivo único: detector_YYYY-MM-DD_HH-MM-SS.log, facilitando auditorías periódicas sin sobrescribir resultados previos.
+   - getopts :d:cf: : Implementa un analizador de opciones robusto. Los dos puntos iniciales activan el "modo silencioso", permitiendo al desarrollador capturar errores
+   de argumentos faltantes de forma personalizada.
+   - Optimización con mapfile y stat.
 
 ______________________________________________________________________________________________________________
 

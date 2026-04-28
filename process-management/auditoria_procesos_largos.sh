@@ -1,60 +1,59 @@
 #!/bin/bash
-# auditoria_procesos_largos.sh
-### El script audita procesos largos de ejecución, genere un reporte claro, y
-### permite a un sysadmin tomar decisiones informadas, sin matar procesos.
-### Tiene 3 parámetros de entrada obligatorios
+### Nombre: auditoria_procesos_largos.sh
+### Autor: kdefsys
+### Identifica los procesos activos que superen un tiempo de ejecución determinado, filtrando procesos
+### del sistema y evaluando la severidad de la carga en el servidor
+### Uso: ./auditoria_procesos_largos.sh <directorio_log> <tiempo_maximo> <limite_tolerancia>
 
 if [[ "$#" -ne 3 ]]; then
-	echo "No hay 3 parámetros de entrada"
-	echo "Saliendo del script"
-	exit
+	echo -e "El script no recibió 3 argumentos\nSaliendo del script"
+	sleep 2
+	exit 1
 fi
 
-DIR="$1"
-
-if [ ! -d "$DIR" ]; then
-	echo "El Directorio especificado en el parametro de entrada no existe"
-	echo "Saliendo del script"
-	exit
+if [[ ! -d "$1" ]]; then
+	echo -e "El directorio ingresado como primer argumento no existe\nSaliendo del script..."
+	sleep 2
+	exit 1
 fi
 
-TIME=$(( $2 * 60))
+DIRECTORIO="$1"
+TIEMPO=$(( $2 * 60 ))
+FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
 LIMITE="$3"
-FECHA=$(date +'%Y%m%d_%H%M')
-SALIDA="${DIR}/auditoria_procesos_largos_$(hostname)_$FECHA.log"
+ESTADO="OK"
+REPORTE="${DIRECTORIO}/auditoria_procesos_largos_${HOSTNAME}_${FECHA}.log"
+SCRIPT_NAME=$(basename "$0")
 
-PROCESOS_TOTALES=$(ps -eo pid,ppid,uid,etimes,start,pcpu,pmem,stat,cmd --no-headers)
+exec 3>>"${REPORTE}"
+echo -e "===================================REPORTE DE PROCESOS LARGOS==================================\n" >&3
+echo -e "FECHA: ${FECHA}\nHOST: ${HOSTNAME}\nPARAMETROS USADOS: "$1" "$2" "$3"\n\n" >&3
 
-PROCESOS_FILTRADOS=$(while read -r Pid Ppid Uid Etimes Start Pcpu Pmem Stat Cmd; do
-	if [[ "$Stat" =~ ^S.* || "$Stat" =~ ^R.* || "$Stat" =~ ^D.* ]]; then
-		if (( Etimes  > TIME )); then
-			if [[ ! "$Cmd" =~ ^\[.*\]$ && "$Cmd" != "$0" ]]; then
-				echo "$Pid $Ppid $Uid $Etimes $Start $pcpu $Pmem $Cmd"
-			fi
-		fi
-	fi
-done < <(echo "$PROCESOS_TOTALES"))
+mapfile -t procesos < <(ps -eo pid,ppid,uid,etimes,start,pcpu,pmem,stat,cmd --no-headers | while read -r pid ppid uid etimes inicio cpu mem estado comando; do
+    if [[ "$estado" =~ ^(S|R|D) ]]; then
+        if [[ "$etimes" -gt "$TIEMPO" ]]; then
+            # Filtro de kernel threads y evitar que el script se lea a sí mismo
+            if [[ ! "$comando" =~ ^\[.*\]$ && "$comando" != *"${SCRIPT_NAME}"* ]]; then
+                printf "PID: %s | PPID: %s | UID: %s | TIME: %ss | START: %s | CPU: %s%% | MEM: %s%% | STAT: %s | CMD: %s\n" \
+                        "$pid" "$ppid" "$uid" "$etimes" "$inicio" "$cpu" "$mem" "$estado" "$comando"
+            fi
+        fi
+    fi
+done)
 
-echo "---------------------------------------------"
-CANTIDAD=$(echo "$PROCESOS_FILTRADOS" | wc -l)
+CANTIDAD=${#procesos[@]}
 
-if (( CANTIDAD == 0 )); then
-	SEVERIDAD="OK"
-elif (( CANTIDAD > 0 && CANTIDAD <= LIMITE )); then
-	SEVERIDAD="OBSERVACIÓN"
+if [[ "${#procesos[@]}" -eq 0 ]]; then
+	echo -e "No hay procesos con esas caracteristicas TODO OK\n" | tee -a "${REPORTE}"
+	exit 1
 else
-	SEVERIDAD="ALERTA OPERATIVA"
+	echo -e "LISTA DE PROCESOS FILSTADOS:\n\n" >&3
+	printf "%s\n" "${procesos[@]}" >&3
+	if [[ "$CANTIDAD" -ge 1 && "$CANTIDAD" -le "$LIMITE" ]]; then
+		echo "CANTIDAD: ${CANTIDAD} ESTADO: OBSERVACION" >&3
+	else echo "CANTIDAD: ${CANTIDAD} ESTADO: ALERTA OPERATIVA" >&3
+	fi
 fi
 
-echo "==========PROCESOS CON EXCESO DE TIEMPO EJECUTÁNDOSE========" > "$SALIDA"
-echo "Fecha: $FECHA" >> "$SALIDA"
-echo "Host: $(hostname)" >> "$SALIDA"
-echo "Parámetros usados: $1 $2 $3" >> "$SALIDA"
-echo >> "$SALIDA"
-echo -e "Procesos Detectados:" | tee -a "$SALIDA" &> /dev/null
-echo "$PROCESOS_FILTRADOS" | tee -a "$SALIDA" &> /dev/null
-echo >> "$SALIDA"
-echo "Cantidad de procesos totales: $CANTIDAD" >> "$SALIDA"
-echo "Nivel de severidad: $SEVERIDAD" >> "$SALIDA"
-
-
+echo -e "Termino el proceso, los datos estan guardados en ${REPORTE}"
+exec 3>&-

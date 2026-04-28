@@ -58,57 +58,38 @@ _____________________________________________________________________________
 _____________________________________________________________________________
 
 ## **auditoria_procesos_largos.sh**
-   Nivel Avanzado **Temas:** Procesos Linux, Auditoría, Filtrado, Bash Scripting
-   y ps/awk/gawk
+   Nivel Avanzado **Temas:** Gestión de Procesos, Aritmética de Bash, Expresiones Regulares, Redirección de Descriptores
 
    Descripción Técnica
 
-   Este script audita procesos de larga ejecución en sistemas linux y genera un
-   reporte detallado en formato legible.
-   Su objetivo es permitir a un sysadmin identificar procesos que se están ejecutando
-   por más tiempo del esperado, clasificarlos según nivel de severidad y preparar
-   información para decisiones posteriores, sin necesidad de matar los procesos
-   El script filtra procesos en estado activo ('R'), durmiendo ('S') o en espera
-   de I/O ('D'), excluye procesos internos ('[cmd]') y el mismo script, y calcula
-   el tiempo de ejecución en segundos para compararlo con un umbral definido por
-   el usuario.
+   Este script es una herramienta de monitoreo de rendimiento y salud del sistema. Su función principal es inspeccionar la tabla de procesos en tiempo real para localizar aquellos 
+   que han estado activos por un periodo superior al límite establecido por el administrador.
+   El script realiza un filtrado inteligente descartando hilos del kernel (Kernel Threads), procesos detenidos o zombies, y se excluye a sí mismo de la lista. Calcula el impacto en el servidor y genera un reporte detallado que incluye métricas de consumo de CPU y memoria, asignando un nivel de severidad (OK, OBSERVACIÓN o ALERTA) basado en un umbral de 
+   tolerancia.
 
    Uso Típico en las empresas:
  
-   Se utiliza en servidores de producción o entornos críticos donde procesos largos
-   pueden:
-   - Indicar cuellos de botella en servicios
-   - Saturar recursos como CPU, memoria o I/O
-   - Prevenir riesgos operativos antes de que afecten usuarios finales.
+   En un entorno corporativo, este script es vital para el equipo de Operaciones de TI y SysAdmins por las siguientes razones:
+   - Detección de "Procesos Fugados" (Runaway Processes): Identifica aplicaciones que han entrado en un bucle infinito o que no han liberado recursos después de terminar su tarea.
+   - Gestión de Sesiones Huérfanas: Localiza procesos de usuarios que se desconectaron del sistema pero dejaron aplicaciones corriendo innecesariamente, consumiendo RAM y CPU.
+   - Control de Backups y ETLs: Permite saber si un proceso crítico de respaldo o carga de datos está tomando mucho más tiempo del habitual, lo cual podría indicar un cuello de 
+   botella en el almacenamiento o la red.
+   - Prevención de Degradación de Servicio: Ayuda a evitar que el servidor se vuelva lento por la acumulación de procesos antiguos que compiten por el planificador del sistema.
 
    Ejemplo de Ejecución:
 
-   'bash'
    ./auditoria_procesos_largos.sh /var/log 120 10
 
-   Curiosidad Técnica
-
-   - ps -eo pid,ppid,uid,etimes,start,pcpu,pmem,stat,cmd --no-headers permite
-   extraer columnas exactas de los procesos y evita la cabecera, facilitando su
-   procesamiento con while read
-   - La condición [[ ! "$Cmd" =~ ^\[.*\]$ && "$Cmd" != "$0"] evita contar procesos
-   internos del kernel y el mismo script, eliminando falsos positivos
-   - La variable Etimes extraída por ps se compara con el parámetro TIME convertido
-   a segundos, usando (( )) para operaciones aritméticas en Bash
-
-   Salida de ejemplo:
-
-   ========PROCESOS CON EXCESO DE TIEMPO EJECUTÁNDOSE========
-   Fecha: 2026-01-30_21:45
-   Host: servidor_principal
-   Parámetros usados: /var/log 120 10
-
-   Procesos Detectados:
-   1234 1 10000 7380 09:10 0.0 0.1 apache2
-   5678 1 1000  8450 08:50 0.1 0.2 mysqld
-
-   Cantidad de procesos totales: 2
-   Nivel de severidad: OBSERVACIÓN
+   Curiosidad Técnica:
+   El script utiliza una combinación de técnicas de Bash de alto rendimiento:
+   - ps -eo ...,etimes: La columna etimes es fundamental; a diferencia de time, esta devuelve el tiempo transcurrido desde el inicio del proceso en segundos absolutos, lo que 
+   permite hacer comparaciones matemáticas directas sin necesidad de parsear formatos complejos de horas y minutos.
+   - while read -r pid ... comando: Al final de la lista de variables, la variable comando actúa como un "sumidero", capturando todo el texto restante de la línea. Esto garantiza 
+   que la ruta completa y los argumentos del comando original se mantengan íntegros, incluso si contienen espacios.
+   - [[ "$estado" =~ ^(S|R|D) ]]: Se utiliza una expresión regular extendida para filtrar los estados de proceso. Esto permite evaluar múltiples condiciones en una sola línea de 
+   código, haciendo el script más eficiente.
+   - exec 3>>"${REPORTE}": Se abre un descriptor de archivo personalizado (3) para la escritura del log. Esto es mucho más eficiente que usar >> en cada línea, ya que el archivo 
+   permanece abierto durante la ejecución del script, reduciendo las operaciones de apertura/cierre de disco.
 
 _____________________________________________________________________________
 

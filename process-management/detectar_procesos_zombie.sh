@@ -1,66 +1,75 @@
 #!/bin/bash
-# detectar_procesos_zombie.sh
-## Entrada 2 parámetros: directorio de salida de log y un umbral minimo
-
-## Recolectamos los parámetros
-## Verificamos que sean 2 parámetros de entrada
+### Nombre: detectar_procesos_zombie.sh
+### Autor: kdefsys
+### Analiza la tabla de procesos del sistema, identifica aquellos en estado zomie (estado Z) y genera un reporte
+### detallado basado en un umbral de alerta definido por el usuario
+### Uso: ./detectar_procesos_zombie.sh <directorio_del_log> <umbral_de_alerta>
 
 if [[ "$#" -ne 2 ]]; then
-   echo "El script debe aceptar si o si 2 parámetros de entrada"
-   echo "Saliendo del script"
-   exit
+	echo -e "El script no recibió dos argumentos\nSaliendo del script..."
+	sleep 2
+	exit 1
 fi
 
-DIR="$1"
-UMBRAL="$2"
-FECHA=$(date +'%Y%m%d_%H%M')
-SALIDA="${DIR}/zombies_$(hostname)_$FECHA.log"
-
-## Verificamos si el directorio de entrada existe o no
-
-if [ ! -d "$DIR" ]; then
-   echo "El directorio no existe"
-   echo "Saliendo del script"
-   exit
-fi
-
-## Inspeccionamos la tabla de procesos del sistema y detectamos procesos cuyo
-## estado sea Z
-## Evitar falsos positivos (no confundir con procesos dormidos o detenidos)
-
-echo "========Procesos Zombies========" | tee "$SALIDA" &> /dev/null
-echo "Fecha y hora de publicación: $FECHA" | tee -a "$SALIDA" &> /dev/null
-
-zombies=$(ps -eo pid,ppid,uid,cmd,start,stat |
-	gawk -v es="Z" '$6 == es {print $1, $2, $3, $4, $5}')
-
-if [ ! -z "$zombies" ]; then
-	CANTIDAD=$(echo "$zombies" | wc -l)
-	PADRES=$(echo "$zombies" | gawk '{print $2}' | sort -n | uniq -c)
-
-	echo "Total de zombis detectados: $CANTIDAD" | tee -a "$SALIDA" &> /dev/null
-	echo -e "\nAgrupación por procesos padre" | tee -a "$SALIDA" &> /dev/null
-
-	while read cantidad_zombie padre; do
-		if (( cantidad_zombie >=1 && cantidad_zombie <=4 )); then
-			estado="OBSERVACIÓN"
-		elif (( cantidad_zombie >=5 && cantidad_zombie <= 19 )); then
-			estado="ADVERTENCIA"
-		else
-			estado="INCIDENTE"
-		fi
-		echo "PPID: $padre | Cantidad hijos zombie: $cantidad_zombie ($estado)" >> "$SALIDA"
-	done < <(echo "$PADRES")
-
-	echo -e "Lista completa de procesos zombis con sus datos: \n" | tee -a "$SALIDA" &> /dev/null
-
-	echo "$zombies" >> "$SALIDA"
-
-	if (( CANTIDAD > UMBRAL )); then
-		echo "Se superó el umbral de $UMBRAL: riesgo operativo" >> "$SALIDA"
-	else
-		echo "No se superó el umbral de $UMBRAL, asi que todo OK" >> "$SALIDA"
-	fi
+if [[ -d "$1" ]]; then
+	DIRECTORIO="$1"
 else
-	echo "No existen usuarios zombies " >> "$SALIDA"
+	echo -e "El directorio ingresado no existe\nSaliendo del script..."
+	sleep 2
+	exit 1
 fi
+
+UMBRAL="$2"
+FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
+REPORTE="${DIRECTORIO}/zombies_${HOSTNAME}_${FECHA}.log"
+
+exec 3>>"$REPORTE"
+
+echo -e "=================================REPORTE DE PROCESOS ZOMBIES===================================" >&3
+echo -e "FECHA: ${FECHA}" >&3
+
+mapfile -t procesos_zombies < <(ps -eo pid,ppid,uid,stat,start,cmd --no-headers | gawk 'BEGIN{OFS="|"} $4=="Z"{print $1, $2, $3, $4, $5, $6}')
+
+CANTIDAD=${#procesos_zombies[@]}
+
+echo -e "TOTAL DE PROCESOS ZOMBIES DETECTADOS: ${CANTIDAD}"
+
+if [[ ${#procesos_zombies[@]} -eq 0 ]]; then
+	echo "No hay procesos zombies" | tee -a "${REPORTE}"
+	echo "Proceso Finalizado" | tee -a "${REPORTE}"
+	exec 3>&-
+	exit 1
+fi
+
+### Dividiendo por PPID
+
+
+gawk -F "|"  -v archivo="$REPORTE" '{arreglo[$2]+=1}
+END{
+	print "DESGLOSE POR PPID CON SU RESPECTIVA CLASIFICACION DE ESTADO\n" >> archivo
+	for (indice in arreglo){
+
+		if (arreglo[indice] >= 1 && arreglo[indice] <= 4)
+			estado="OBSERVACION"
+		else if (arreglo[indice] >= 5 && arreglo[indice] <= 19)
+			estado="ADVERTENCIA"
+		else if (arreglo[indice] >= 20) estado = "INCIDENTE"
+
+		printf ("PPID: %s\tCANTIDAD: %s\tESTADO: %s\n", indice, arreglo[indice], estado) >> archivo
+
+	}
+}' < <(printf "%s\n" "${procesos_zombies[@]}")
+
+echo -e "LISTA COMPLETA DE PROCESOS ZOMBIES DETECTADOS:\n" >&3
+
+printf "%s\n" "${procesos_zombies[@]}" >&3
+
+if [[ "$UMBRAL" -ge "${CANTIDAD}" ]]; then
+	echo -e "Todo esta OK, no se supero la cantidad limite ${UMBRAL}" >&3
+else
+	echo -e "RIESGO OPERATIVO, si se supero la cantidad limite ${UMBRAL}" >&3
+fi
+
+echo "Script finalizado, los datos fueron guardados en ${REPORTE}"
+
+exec 3>&-

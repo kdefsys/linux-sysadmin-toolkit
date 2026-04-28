@@ -15,28 +15,15 @@ entornos productivos.
 _____________________________________________________________________________
 
 ## **detectar_procesos_zombie.sh**
-   Nivel Avanzado 
+   Nivel Intermedio **Temas:** Gestión de Procesos, Redirección de descriptores, Procesamiento de texto con gawk, Automatización de logs
    
-   Descripcion:
-
-   En sistemas Linux en producción, los procesos zombis indican problemas en la
-   gestión del ciclo de vida de procesos padre-hijo
-   Aunque no consumen CPU ni memoria, si ocupan entradas en la tabla de procesos,
-   lo que en casos extremos puede impedir la creación de nuevos procesos.
-
-   El script permite detectar, auditar y reportar procesos zombis de forma
-   segura y profesional.
-   El script identifica procesos en estado Z (zombie), recopilar información
-   relevante y generar un reporte claro y accionable para el sysadmin
-   El script no debe matar procesos directamente (un zombie no puede ser eliminado
-   con kill), sino ayudar al diagnóstico.
-
-   Entradas:
-   1. Un directorio de salida para logs
-   2. Un umbral mínimo de zombis (numero entero)
-
-   Ejemplo de ejecución:
-   ./detectar_procesos_zombie.sh /var/log/auditorias 3
+   Descripcion Técnica:
+   Este script es una herramienta de monitoreo proactivo diseñada para analizar la tabla de procesos de un sistema Linux. Su objetivo principal es detectar 
+   procesos en estado Zombie (Z), los cuales son procesos que han terminado su ejecución pero cuya entrada permanece en la tabla de procesos porque su padre 
+   no ha leído su estado de salida.
+   El script recolecta información detallada (PID, PPID, UID, etc.), clasifica la gravedad de la situación basándose en la acumulación de zombies por proceso
+   padre y genera un reporte fechado. Además, realiza una validación lógica contra un umbral de alerta definido por el usuario para determinar si existe un riesgo 
+   operativo inminente.
 
    Uso Típico en empresas:
    - Detección temprana de fallas en servicios
@@ -55,30 +42,18 @@ _____________________________________________________________________________
    - Evidencia documentada mediante log
    - Soporte a decisiones operativas (reinicio de servidores, escalamiento)
 
+   Ejemplo de Ejecución:
+
+   ./detectar_procesos_zombie.sh /var/log/monitor 10
+
    Curiosidad Técnica:
-   - ps -eo pid,ppid,uid,cmd,start,stat
-   - stat == "Z"
-   - Agrupación por PPID
-   awk '{print $2}' | sort -n | uniq -c
-
-   - Uso de Sustitución de procesos: done < <(echo "$PADRES")
-
-   Salida de Ejemplo:
-
-   ========Procesos Zombies========
-   Fecha y hora de publicación: 20260130_2145
-   Total de zombis detectados: 7
-   Agrupación por procesos padre
-   PPID: 1023 | Cantidad de hijos zombie: 2 (OBSERVACIÓN)
-   PPID: 2045 | Cantidad de hijos zombie: 5 (ADVERTENCIA)
-
-   Lista complea de procesos zombis con sus datos:
-
-   3456 1023 1001 /usr/bin/app-worker 10:22
-   3467 1023 1001 /usr/bin/app-worker 10:22
-   5678 2045 1002 /usr/bin/legacy_service 09:10
-
-   Se superó el umbral de 5: riesgo operativo
+   El script utiliza varias técnicas avanzadas de Bash que vale la pena destacar:
+   - exec 3>>"$REPORTE": En lugar de usar >> en cada línea, abrimos un descriptor de archivo personalizado (el número 3). Esto centraliza la escritura 
+   al log y hace el código más limpio.
+   - mapfile -t ... < <(...): Combina un Process Substitution con mapfile para cargar la salida de ps directamente en un arreglo de Bash, evitando el uso de archivos temporales.
+   - Lógica en gawk: Se utiliza un arreglo asociativo (arreglo[$2]+=1) dentro de gawk para agrupar y contar zombies por su PPID en una sola pasada, lo cual es extremadamente 
+   eficiente en sistemas con miles de procesos.
+   - ps -eo ... --no-headers: El uso de --no-headers es vital en scripts para evitar que el encabezado de las columnas (PID, PPID...) sea interpretado como un proceso real.
 
 _____________________________________________________________________________
 

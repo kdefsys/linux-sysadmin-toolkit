@@ -94,53 +94,28 @@ _____________________________________________________________________________
 _____________________________________________________________________________
 
 ## **monitoreo_cpu_memoria.sh**
-   Nivel "Avanzado" **Temas:** Procesos, CPU, Memoria, Auditoría, Bash avanzado,
-   bc, filtros de texto
+   Nivel "Avanzado" **Temas:** Aritmética de punto flotante(bc), Funciones con retorno de estado, gawk para agregacion de datos, Redireccion de descriptores.
 
    Descripción Técnica:
-
-   Este script permite auditar el consumo de CPU y memoria de los procesos en un
-   sistema Linux, detectando aquellos que superen los umbrales definidos por el
-   usuario.
-   Genera un reporte detallado en un archivo log que incluy: PID, UID, porcentaje
-   de CPU, porcentaje de memoria, tiempo de ejecución y comando. Además, indica
-   un nivel de severidad para cada proceso (OK, Observación, Crítico) basado en
-   el consumo relativo a los umbrales.
+   Este script es un monitor de rendimiento de alta precisión. A diferencia de las herramientas estándar que redondean valores, este script utiliza la calculadora de precisión 
+   arbitraria (bc) para evaluar el consumo de CPU y RAM con decimales.
+   Implementa una función de evaluación que clasifica cada proceso en tres estados de severidad (OK, OBSERVACIÓN, CRÍTICO) basándose en un multiplicador dinámico (1.5x del umbral).
+   Al finalizar, realiza un post-procesamiento de la data mediante gawk para entregar un resumen del consumo total de los recursos afectados.
 
    Uso Típico en las empresas:
+   En entornos de producción, las empresas lo utilizan para:
+   - Identificación de procesos "gastadores": Detectar aplicaciones que, sin estar fallando, consumen más recursos de los proyectados (fugas de memoria o picos de CPU).
+   - Alertamiento preventivo: Correr el script mediante una tarea programada (cron) para generar logs históricos que permitan analizar la estabilidad del servidor durante horas pico.
+   - Diagnóstico de aplicaciones: Verificar si una actualización de software ha incrementado el consumo de recursos base comparado con versiones anteriores.
 
-   Se puede utilizar en servidores de producción para:
-   - Detectar procesos qye consumen excesivamente CPU o memoria.
-   - Prevenir degradación del rendimiento de servicios críticos.
-   - Proporcionar informes periódicos para el equipo de sistemas.
-   - Monitoreo de servidores multiusuario donde varios procesos compiten por
-   recursos.
+   Ejemplo de ejecución:
 
-   Ejemplo de ejecución
- 
-   ./monitoreo_cpu_memoria.sh /var/log 0.1 4
+   ./monitoreo_cpu_memoria.sh /var/log/metrics 25 20
 
    Curiosidad Técnica:
+   - read SUMA_CPU SUMA_MEM <<< "$TOTALES": El uso de este Here String evita la creación de un subshell (lo que ocurriría con un pipe |), permitiendo que los valores calculados 
+   por gawk persistan en el hilo principal del script.
+   - split($3, cpu, " ") en gawk: Esta técnica de manipulación de cadenas permite limpiar las etiquetas del reporte (como "CPU:" o "%") para realizar operaciones matemáticas 
+   puras sobre los valores decimales, demostrando un manejo avanzado de procesamiento de texto.
 
-   - El script utiliza bc -l para operaciones con decimales y comparaciones de
-   consumo, ya que bash no soporta números decimales en (( )).
-   - Filtra procesos ignorando procesos del mismo script.
-   - gawl se usa para acumular totales de CPU y memoria, permitiendo un resumen
-   rápido en el log.
-   - Redirecciones y tee aseguran que la salida se almacene y se muestre en pantalla
-   simultáneamente
-
-   Ejemplo de salida:
-
-   ========LISTADO DE PROCESOS QUE SUPERAN LOS UMBRALES========
-
-   Fecha: 20260130-2105
-   Host: servidor01
-   Parámetros de entrada: /var/log 0.1 4
-   -------------------------------------
-   1234  1001 0.03 25.0 3600 /usr/bin/pythin3 Observacion OK
-   2345  1002 0.4 12.0 7200 /usr/bin/java Critico Critico
-
-   El total de consumo de CPU y de MEM respectivamente fue: 0.43 37.0
-
-_____________________________________________________________________________
+________________________________________________________________________________________

@@ -12,11 +12,12 @@ entornos productivos.
 - [detectar_procesos_zombie.sh](#detectar_procesos_zombiesh)
 - [auditoria_procesos_largos.sh](#auditoria_procesos_largossh)
 - [monitoreo_cpu_memoria.sh](#monitoreo_cpu_memoriash)
+- [mapeo_jerarquico.sh](#mapeo_jerarquicosh)
 _____________________________________________________________________________
 
 ## **detectar_procesos_zombie.sh**
    Nivel Intermedio **Temas:** Gestión de Procesos, Redirección de descriptores, Procesamiento de texto con gawk, Automatización de logs
-   
+
    Descripcion Técnica:
    Este script es una herramienta de monitoreo proactivo diseñada para analizar la tabla de procesos de un sistema Linux. Su objetivo principal es detectar 
    procesos en estado Zombie (Z), los cuales son procesos que han terminado su ejecución pero cuya entrada permanece en la tabla de procesos porque su padre 
@@ -119,3 +120,35 @@ _____________________________________________________________________________
    puras sobre los valores decimales, demostrando un manejo avanzado de procesamiento de texto.
 
 ________________________________________________________________________________________
+
+## **mapeo_jerarquico.sh**
+   Nivel Senior **Temas:** Recursividad, Arreglos asociativos (declare -A), Word Splitting controlado y Árboles de Procesos.
+
+   Descripción Técnica:
+   Este script realiza una reconstrucción lógica del árbol de procesos del sistema (Process Tree) partiendo desde la raíz del Kernel (PPID 0). A diferencia de comandos estándar 
+   como pstree, este desarrollo implementa un motor de recursividad en Bash que audita la salud de cada rama.
+   Su objetivo principal es identificar relaciones de herencia y detectar "fugas de hijos", una condición donde un proceso padre genera una cantidad desproporcionada de subprocesos,
+   lo que puede indicar un error de programación (fork bomb accidental) o un servicio fuera de control.
+
+   Uso típico en las empresas:
+   En un entorno corporativo, un administrador de sistemas o ingeniero de SRE (Site Reliability Engineering) utilizaría este script para:
+   - Diagnóstico de Servidores Web/App: Identificar si servicios como Apache, Nginx o trabajadores de PHP-FPM están creando demasiados hilos que saturan la tabla de procesos.
+   - Limpieza de Procesos Huérfanos: Localizar ramas de procesos que han perdido a su padre original y han sido adoptados por systemd (PID 1), permitiendo rastrear su origen antes 
+   de terminarlos.
+   - Troubleshooting de Aplicaciones Legacy: Entender cómo una aplicación antigua despliega sus procesos internos para optimizar la asignación de recursos en contenedores o máquinas
+   virtuales.
+
+   Ejemplo de ejecución:
+
+   ./mapeo_jerarquico.sh 10
+
+   Curiosidad Técnica:
+   - Recursividad con ident_hijo: El script utiliza una variable de nivel que se incrementa en cada llamada recursiva. Esto permite calcular dinámicamente el prefijo de espacios,
+   creando una jerarquía visual perfecta sin usar herramientas externas de formato.
+   - Arreglos Asociativos para Relaciones: Se utiliza declare -A procesos_padre para mapear los PIDs. La "curiosidad" es que el valor guardado es un String de PIDs separados
+   por espacios; al usar for hijo in ${procesos_padre[$padre]} (sin comillas), se aprovecha el Word Splitting intencional de Bash para iterar sobre una lista dinámica de longitud
+   variable.
+   - El proceso Raíz (0): El script inicia la recursión en el PID 0. En linux, el PID 0 es el Swapper o Idle Process. Capturar esta raíz permite mapear absolutamente todo el bosque
+   de procesos del sistema.
+
+_________________________________________________________________________________________________________________________________________________

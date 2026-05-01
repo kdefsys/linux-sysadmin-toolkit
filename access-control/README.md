@@ -15,6 +15,7 @@ Los scripts generan logs detallados con información útil para **auditorías de
 - [auditoria_permisos_peligrosos.sh](#auditoria_permisos_peligrosossh)
 - [detector_permisos_inseguros.sh](#detector_permisos_insegurossh)
 - [auditoria_usuarios_privilegios.sh](#auditoria_usuarios_privilegiossh)
+- [auditor_de_integridad.sh](#auditor_de_integridadsh)
 
 -------------------------------------------------------------------------------------------------------------
 
@@ -162,3 +163,35 @@ ________________________________________________________________________________
    - regex [[ "$5" =~ "^(!|\*) ]]"
 
 ___________________________________________________________________________________________________________________________________________________________________________
+
+## **auditor_de_integridad.sh**
+   Nivel Experto **Temas:** Monitoreo de integridad (FIM), Bits especiales (SUID/SGID/Sticky), Optimización de búsqueda y comparación
+
+   Descripción Técnica:
+   Este script actúa como una herramienta de seguridad preventiva que detecta desviaciones en los privilegios del sistema. Su funcionamiento se basa en la creación de una 
+   "Línea Base" (baseline) de archivos con permisos especiales (4000, 2000, 1000). Al realizar escaneos posteriores, el script identifica tres escenarios críticos:
+   - Integridad: El archivo existe y mantiene sus permisos originales.
+   - Modificación: El archivo ha sufrido un cambio de permisos (posible escalada de privilegios).
+   - Incursión: Se detectan binarios con permisos especiales que no estaban registrados en la base de datos de confianza.
+
+   Uso Típico en las empresas:
+   Es una herramienta fundamental para el Hardening y el cumplimiento de normativas de seguridad (como PCI-DSS o ISO 27001).
+   - Detección de Intrusos: Permite identificar rápidamente si un atacante ha instalado una backdoor con privilegios de root (SUID).
+   - Auditoría de Cambios: Ayuda a los administradores de sistemas a verificar que las actualizaciones o instalaciones recientes no hayan alterado la postura de seguridad de los 
+   binarios del sistema.
+   - Automatización: Se puede programar mediante cron para recibir reportes diarios de cualquier alteración en directorios sensibles como /usr/bin o /sbin.
+
+   Ejemplo de Ejecución:
+
+   sudo ./auditor_de_integridad.sh -g
+
+
+   sudo ./auditor_de_integridad.sh -s /usr/bin
+
+   Curiosidad Técnica:
+   - find / -perm /7000: Utiliza el prefijo / para realizar un "OR" lógico. Captura cualquier archivo que tenga al menos uno de los bits especiales activos. El 7 es la suma octal de
+   SUID(4) + SGID(2) + Sticky(1).
+   - Expansión de Parámetros (% y #): Al usar ${archivo%|*} y ${archivo#*|}, el script procesa los datos directamente en la memoria del shell. Esto es drásticamente más rápido que 
+   invocar comandos externos como cut o awk dentro de un bucle que recorre miles de archivos.
+
+___________________________________________________________________________________________________________________________________________________________________________________

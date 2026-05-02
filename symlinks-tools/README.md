@@ -11,6 +11,7 @@ mantenimiento de servidores.
 - [auditar_symlinks_rotos.sh](#auditar_symlinks_rotossh)
 - [revinculacion_inteligente.sh](#revinculacion_inteligentesh)
 - [verificar_y_reconstruir_symlinks.sh](#verificar_y_reconstruir_symlinkssh)
+- [gestor_entornos.sh](#gestor_entornossh)
 ________________________________________________________________________________________________
 
 ## **auditar_symlinks_rotos.sh**
@@ -127,7 +128,39 @@ ________________________________________________________________________________
 
 _____________________________________________________________________________
 
-## NOTA FINA
+## **gestor_entornos.sh**
+   Nivel Intermedio-Avanzado **Temas:** Automatización de Despliegues, Gestión de Parámetros(getopts), Integridad de Enlaces simbolicos,
+   Logging Profesional
+
+   Descripción Técnica:
+   Este script es una herramienta de orquestación de infraestructura diseñada para alternar dinámicamente entre diferentes configuraciones o versiones de una aplicación. 
+   Utiliza una lógica de "conmutación" mediante enlaces simbólicos, permitiendo que un punto de acceso único (target) apunte de forma segura a distintos directorios de entorno
+   (source/env).
+   El programa destaca por su robustez, ya que implementa validaciones de tres capas: verifica la existencia del origen, valida que el destino no sea un archivo/directorio real 
+   para evitar pérdida de datos, y gestiona tanto la actualización de enlaces existentes como la creación de nuevos.
+
+   Uso Típico en las empresas:
+   En entornos de Integración y Despliegue Continuo (CI/CD), las empresas necesitan cambiar de versiones de software o de configuraciones de base de datos sin apagar los servicios.
+   Contextos específicos:
+   - Estrategias Blue-Green Deployment: Para activar la versión "Green" (nueva) simplemente moviendo el enlace simbólico que apunta al servidor web (Nginx/Apache), permitiendo un 
+   retorno inmediato (rollback) si algo falla.
+   - Gestión de Entornos Local/Dev/Prod: Para cambiar las variables de entorno o archivos de configuración de una aplicación según el servidor en el que se encuentre.
+   - Actualizaciones de Aplicaciones: Permite instalar una nueva versión en una carpeta paralela y "activarla" en milisegundos mediante el cambio del enlace.
+
+   Ejemplo de Ejecución:
+   chmod +x gestor_entornos.sh
+
+   ./gestor_entornos.sh -s /apps/releases -e v2.1.0 -t /var/www/html/current
+
+   Curiosidad Técnica:
+   - Procesamiento con getopts: Implementa un análisis de argumentos estándar de Linux, permitiendo que las opciones -s, -t y -e se pasen en cualquier orden de forma profesional.
+   - Protección de Datos Atómica: Antes de operar, el script utiliza [[ -L "$ENLACE" ]] contra [[ -d "$ENLACE" ]]. Esto asegura que si por error el administrador intenta convertir 
+   una carpeta con datos reales en un enlace, el script se detendrá y protegerá la integridad de los archivos.
+   - Redirección de Auditoría (exec 3>>): Utiliza un descriptor de archivo personalizado para manejar el archivo de reporte. Esto permite separar los mensajes informativos de la 
+   terminal de los registros permanentes de auditoría, manteniendo un flujo de salida limpio y eficiente.
+______________________________________________________________________________________________________________________________________________________________
+
+## NOTA FINAL
 Estos scripts reflejan problemas reales que enfrenta un administrador de sistemas
 Linux en el día a día, y demuestran un uso práctico y consciente de los enlaces
 simbólicos en entornos empresariales.

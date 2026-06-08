@@ -15,6 +15,7 @@ prácticas de scripting.
 - [control_usuarios_permisos.sh](#control_usuarios_permisossh)
 - [mensajeria.sh](#mensajeriash)
 - [monitor_recursos_umbral.sh](#monitor_recursos_umbralsh)
+- [auditoria_integridad_archivos.sh](#auditoria_integridad_archivossh)
 _____________________________________________________________________________
 
 ## Estructura del directorio
@@ -250,3 +251,63 @@ ________________________________________________________________________________
    root      1     0.0   0.1   Ss   /sbin/init
 
 _____________________________________________________________________________________________________________
+
+## **auditoria_integridad_archivos.sh**
+   Nivel: Avanzado **Temas:** Seguridad Ofensiva/Defensiva, integridad de Datos, Criptografía (Hashing), Manipulación
+   de Descriptores de archivo, Procesamiento de Texto con comm y gawk
+
+   Descripción Técnica:
+   Este script implementa un sistema ligero de detección de intrusos basado en el host (HIDS). Su objetivo principal es 
+   garantizar la inmutabilidad y la integridad de los archivos dentro de un directorio crítico del sistema. El script opera 
+   en dos fases controladas mediante opciones de línea de comandos (getopts):
+
+   - Fase de Captura (Snapshot): Registra de forma recursiva el estado actual del directorio objetivo generando una firma 
+   criptográfica SHA-256 única para cada archivo. Esta base de datos de "huellas dactilares" se almacena en un archivo plano estructurado (snapshot.db).
+   - Fase de Auditoría (Verificación): Genera un segundo snapshot temporal del estado en vivo del directorio y realiza un análisis diferencial optimizado en memoria contra el
+   registro original. Mediante operaciones de conjuntos binarios (comm) y parsing con gawk, el script aísla y clasifica con precisión quirúrgica qué elementos  han sufrido 
+   alteraciones estructurales, cuáles han sido inyectados (creados) y cuáles han sido removidos (eliminados), volcando los resultados en reportes analíticos independientes.
+
+   Uso Típico en las empresas:
+   En entornos corporativos y de producción, este script se utiliza en el despliegue de políticas de Hardening de Servidores y cumplimiento de normativas de seguridad (como PCI-DSS o ISO 27001).
+   - Contexto de uso: Se programa mediante tareas cronificadas (cron) para ejecutarse en la madrugada sobre directorios críticos que nunca deberían cambiar sin un control de cambios 
+   previo (como /etc donde residen las configuraciones del sistema, /bin o /sbin que contienen los binarios esenciales, o el subdirectorio de producción de un servidor web 
+   /var/www/html).
+   - Problemas del día a día que resuelve: * Detección de Defacement: Identifica de inmediato si un atacante ha modificado el código fuente de la página web de la empresa para 
+   alterar su aspecto o robar datos.
+  	. Detección de Backdoors y Rootkits: Alerta al administrador si un intruso logra escalar privilegios e inyecta un script malicioso oculto o altera un binario del sistema 
+  	para mantener acceso persistente.
+   	. Auditoría de Cambios no Autorizados: Evita el "fuego amigo" en equipos de operaciones, detectando si un administrador modificó una configuración del sistema sin registrarla
+  	 en el ticket de cambios, facilitando el rollback inmediato.
+
+   Ejemplo de Uso:
+
+   1. Generar la firma base de un directorio de desarrollo guardando el registro en una ruta personalizada: ./auditoria_integridad.sh -d /home/kdefsys/proyectos -g -f /home/kdefsys/firmas/auditoria.db
+
+   2. Verificar el directorio tiempo después para auditar alteraciones: ./auditoria_integridad.sh -d /home/kdefsys/proyectos -v -f /home/kdefsys/firmas/auditoria.db
+
+   Salida Esperada:
+
+   =====REPORTE=====
+
+
+   Archivos Modificados
+
+   /home/kdefsys/proyectos/daily-tools/mensajeria.sh
+
+   Archivos Creados
+
+   /home/kdefsys/proyectos/daily-tools/test_exploit.py
+
+   Archivos Eliminados
+
+   /home/kdefsys/proyectos/daily-tools/limpieza_enlaces.sh
+
+   Curiosidad Técnica:
+   - exec 3>>"$SALIDA" y exec 4>>"$SALIDA2": En lugar de abrir y cerrar constantemente los archivos de la base de datos dentro de bucles o comandos individuales (lo cual genera un alto impacto de Entrada/Salida en el disco), el script secuestra los descriptores de archivo 3 y 4 a nivel de proceso. Toda la salida del comando find se canaliza directamente
+   a estos canales de comunicación abiertos (>&3 y >&4), optimizando drásticamente la velocidad de escritura en directorios con miles de archivos.
+   - comm -23 "$SALIDA2" "$SALIDA": El uso tradicional de bucles anidados para comparar dos listas de texto es extremadamente lento ($O(N^2)$). Tu script implementa una solución de 
+   alto rendimiento ordenando previamente los archivos (sort) y procesándolos con comm. El parámetro -23 suprime las líneas exclusivas del segundo archivo y las líneas comunas, 
+   dejando de manera nativa y ultra veloz únicamente los registros que han sido modificados o creados en el estado actual, procesándolos limpiamente con gawk en una sola línea de 
+   ejecución.
+
+___________________________________________________________________________________________________________________________________________________________________________________

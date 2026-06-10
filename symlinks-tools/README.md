@@ -12,6 +12,7 @@ mantenimiento de servidores.
 - [revinculacion_inteligente.sh](#revinculacion_inteligentesh)
 - [verificar_y_reconstruir_symlinks.sh](#verificar_y_reconstruir_symlinkssh)
 - [gestor_entornos.sh](#gestor_entornossh)
+- [optimizador_almacenamiento_dedup.sh](#optimizador_almacenamiento_dedupsh)
 ________________________________________________________________________________________________
 
 ## **auditar_symlinks_rotos.sh**
@@ -159,6 +160,48 @@ _____________________________________________________________________________
    - Redirección de Auditoría (exec 3>>): Utiliza un descriptor de archivo personalizado para manejar el archivo de reporte. Esto permite separar los mensajes informativos de la 
    terminal de los registros permanentes de auditoría, manteniendo un flujo de salida limpio y eficiente.
 ______________________________________________________________________________________________________________________________________________________________
+
+## **optimizador_almacenamiento_dedup.sh**
+   Nivel Avanzado **Temas:** Enlaces duros(Hard Links), Deduplicación de Datos, Inodos, Estructuras indexadas Complejas, Optimización de Almacenamiento, Aritmética Flotante (bc).
+
+   Descripción Técnica:
+   Este script es una utilidad avanzada de optimización de sistemas de archivos diseñada para mitigar el consumo redundante de almacenamiento. Su objetivo principal es realizar una 
+   deduplicación local de datos comparando un directorio de destino frente a un directorio de referencia histórico.
+   El script mitiga el costo computacional mediante una estrategia de validación en dos fases:
+
+   	-Filtro Estructural por Tamaño: Mapea el directorio de referencia dentro de un arreglo asociativo en memoria, utilizando el tamaño exacto en bytes como clave única. 
+   	Los archivos de destino se evalúan contra este mapa; si los tamaños no coinciden, se descartan de inmediato sin realizar operaciones costosas de lectura.
+   	-Filtro de Identidad Criptográfica: Únicamente cuando hay colisión de tamaños, se calcula el hash SHA-256 del archivo destino y se contrasta contra los hashes de los candidatos de la referencia. Tras validar que los elementos no compartan ya el mismo inodo, el script destruye de forma atómica el archivo duplicado en el destino y lo reemplaza
+   	por un enlace duro (hard link) apuntando al origen, consolidando el espacio físico en disco.
+
+   Uso Típico en las empresas:
+   En infraestructuras corporativas, este script emula el núcleo de comportamiento de sistemas de respaldo incrementales y de snapshots (como rsnapshot o el almacenamiento interno de
+   objetos de Git).
+   - Contexto de uso: Se integra en los flujos post-backup nocturnos. Cuando una organización realiza respaldos completos diarios de servidores de archivos compartidos, repositorios 
+   de código o entornos de staging, el 90% de los datos suelen permanecer estáticos entre un día y otro. El script interviene tras la copia de seguridad para consolidar los bloques
+   duplicados.
+   - Problemas del día a día que resuelve: * Agotamiento de Almacenamiento: Evita la compra desmedida de espacio en storage (SAN/NAS) o instancias cloud (AWS EBS/EFS) al permitir 
+   almacenar semanas de históricos completos ocupando espacio real equivalente a casi un solo backup.
+	- Reducción de Ventanas de Mantenimiento: Permite a los equipos de infraestructura mantener retenciones de datos a largo plazo de manera local y con acceso inmediato, 
+   	eliminando la necesidad de comprimir/descomprimir archivos .tar.gz masivos para auditorías rápidas.
+
+   Ejemplo de Ejecución:
+   1. Realizar una simulación (Dry-Run) para calcular el ahorro de espacio potencial sin alterar el disco: ./optimizador_almacenamiento_dedup.sh -r /backups/lunes -d /backups/martes -m 1048576 -s
+   2. Ejecutar la deduplicación real sobre el directorio de destino: ./optimizador_almacenamiento_dedup.sh -r /backups/lunes -d /backups/martes -m 1048576
+
+   Curiosidad Técnica:
+   El script destaca por resolver tres grandes desafíos arquitectónicos en Bash:
+   - Estrategia Contra la Ineficiencia $O(N^2)$: Comparar cada archivo de un directorio contra todos los archivos de otro directorio mediante bucles anidados convencionales 
+   provocaría una degradación extrema del rendimiento. El uso del arreglo asociativo mapa_referencia["$indice"] indexado por tamaño transforma la búsqueda inicial en una operación 
+   de tiempo constante $O(1)$, aislando el cálculo de firmas SHA-256 estrictamente a los archivos sospechosos de ser idénticos.
+   - Aislamiento de Colisiones con IFS='%': Al concatenar las rutas de archivos que comparten tamaños dentro de una sola cadena de texto separada por %, el script evita desbordar
+   la memoria. Posteriormente, la técnica de reasignación local del Separador Interno de Campo (IFS='%' read -r -a opciones_re <<< "$cadena_re") deserializa la cadena en un array 
+   dinámico al vuelo, permitiendo iterar de forma nativa sobre un número indeterminado de colisiones sin requerir subshells externos.
+   - Aritmética de Punto Flotante Nativa Externa: Bash no soporta operaciones aritméticas con decimales. Para poder entregar un reporte métrico profesional y legible para la toma 
+   de decisiones, el script delega el cálculo final al procesador matemático bc a través de un pipeline, configurando la precisión mediante scale=2 para transformar bytes crudos a 
+   Megabytes formateados con precisión decimal.
+
+_____________________________________________________________________________________________________________________________________________________________________________________
 
 ## NOTA FINAL
 Estos scripts reflejan problemas reales que enfrenta un administrador de sistemas

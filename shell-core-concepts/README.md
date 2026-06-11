@@ -12,6 +12,7 @@ shell bash, de la línea de comandos y de scripting.
 - [limpieza_selectiva_archivos.sh](#limpieza_selectiva_archivossh)
 - [auditoria_avanzada.sh](#auditoria_avanzadash)
 - [log_rote.sh](#log_rotesh)
+- [auditoria_unificada_pro.sh](#auditoria_unificada_prosh)
 _____________________________________________________________________________
 
 ## **auditar_archivos_criticos.sh**
@@ -214,3 +215,41 @@ _____________________________________________________________________________
    y el directorio de destino ocupan al menos un bloque de disco (usualmente 4KB), independientemente del peso real de los datos.
 
 __________________________________________________________________________________________________________________________________
+
+## **auditoria_unificada_pro.sh**
+   Nivel Avanzado **Temas:** getopts, descriptores de archivos, mapfile, find, grep, gawk
+
+   Descripción Técnica:
+   Este script automatiza y centraliza las tareas críticas de auditoría interna de servidores en una única herramienta modular. Su objetivo es escanear estructuras de 
+   directorios complejas de forma eficiente para identificar archivos que contengan patrones o anomalías de texto (como errores, advertencias de seguridad o fallos críticos 
+   de aplicaciones), permitiendo además filtrar de manera simultánea bajo criterios de ventana temporal de modificación (en días) y un umbral de tamaño mínimo (en Megabytes).
+   Adicionalmente, cuenta con una rutina de saneamiento y purga segura capaz de identificar y eliminar de forma controlada archivos temporales o residuales de alto riesgo 
+   (`.bak`, `.tmp`, `.old`) que coincidan con la búsqueda.
+
+   Uso Típico en las Empresas:
+   En un entorno corporativo real (como infraestructuras cloud, clústeres de microservicios o servidores de bases de datos), la acumulación masiva de logs desestructurados y 
+   archivos de respaldo manuales suele saturar el espacio en disco e impedir que el equipo de soporte encuentre la causa raíz de un incidente rápido.
+   - **Auditoría Post-Mortem de Incidentes:** Cuando una aplicacion crítica falla, el operador puede rastrear velozmente múltiples subdirectorios en busca del patrón "CRITICAL" 
+   o "FATAL" limitando la búsqueda a archivos modificados en las últimas 24 horas y que pesen más de 50MB, evitando abrir gigabytes de logs antiguos de forma manual.
+   - **Mantenimiento Automatizado en el Cron:** Se puede programar el script para que corra los fines de semana de forma desatendida, genere un reporte limpio sobre el estado del 
+   almacenamiento en un descriptor de archivo dedicado, y purgue automáticamente archivos basura `.tmp` o copias obsoletas `.bak` generadas por deploys previos, mitigando alertas 
+   del sistema de monitoreo por falta de espacio en disco (Disk Space Low).
+
+   Ejemplo de Ejecución:
+   El script se ejecuta pasando parámetros de forma flexible mediante banderas cortas estándar:
+   - Caso 1: Búsqueda avanzada de errores en logs modificados hace menos de 2 días y mayores a 10MB: ./auditoria_unificada_pro.sh -d /var/log/apps -p "FATAL_ERROR" -m 2 -s 10
+   - Caso 2: Auditoría general con activación del Modo de Eliminación Segura (-e) para limpiar basura residual: ./auditoria_unificada_pro.sh -d /home/deploy/project -p "exception" -e
+   - Caso 3: Control de errores por omisión del argumento obligatorio (-d): ./auditoria_unificada_pro.sh -p "Unauthorized"
+
+   Curiosidad Técnica:
+   La arquitectura interna de este script destaca por tres implementaciones complejas que garantizan rendimiento y orden en producción:
+   - **`find ... -exec grep -Hic ... {} + | gawk -F ':' '$2!=0{print $1}'`**: En lugar de ejecutar una instancia de `grep` por cada archivo encontrado (lo cual ralentizaría 
+   drásticamente el servidor), la sintaxis `{}+` agrupa masivamente miles de rutas y las procesa en bloques mínimos. Luego, `grep -Hic` devuelve la ruta junto al recuento de 
+   coincidencias separado por dos puntos (ej. `/ruta/archivo:0`). Aquí es donde entra la genialidad de `gawk`: filtra al vuelo las líneas evaluando la segunda columna (`$2!=0`), 
+   descartando los archivos limpios sin coincidencias y extrayendo únicamente las rutas válidas (`print $1`) de forma extremadamente rápida.
+   - **`mapfile -t archivos_log < <(recopilacion ...)`**: Esta estructura redirige la salida procesada de la función directamente a la memoria de Bash. Evita crear archivos 
+   temporales en el disco y previene el bug común de los bucles `while read`, manteniendo el arreglo perfectamente segmentado incluso si hay nombres de archivos con espacios en blanco.
+   - **`exec 3>>"$SALIDA"`**: Abre un Descriptor de Archivos personalizado (el número 3) apuntando al archivo log de destino en modo *append*. De esta forma, el script puede derivar
+   de forma transparente reportes usando `>&3` sin interferir con la salida estándar en pantalla (`stdout`), permitiendo un control absoluto de flujos de datos asíncronos.
+
+_____________________________________________________________________________________________________________________________________________________________________________________

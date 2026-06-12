@@ -17,6 +17,7 @@ Los scripts generan logs detallados con información útil para **auditorías de
 - [auditoria_usuarios_privilegios.sh](#auditoria_usuarios_privilegiossh)
 - [auditor_de_integridad.sh](#auditor_de_integridadsh)
 - [quarantine_and_lockdown.sh](#quarantine_and_lockdownsh)
+
 -------------------------------------------------------------------------------------------------------------
 
 ## **auditoria_permisos_peligrosos.sh**
@@ -196,52 +197,5 @@ ________________________________________________________________________________
 
 ___________________________________________________________________________________________________________________________________________________________________________________
 
-## **quarantine_and_lockdown.sh**
-   Nivel: **Avanzado / Incident Response (IR)** **Temas:** Mitigación de Incidentes, Jaulas de Aislamiento, Control de Accesos Securitizado, Automatización de Permisos, 
-   Redirección Avanzada de Descriptores de Archivos, getopts.
-
-   Descripción Técnica:
-   Este script actúa como un **motor interactivo de mitigación defensiva y respuesta ante incidentes (Incident Response)** dentro del sistema operativo Linux. Su objetivo principal
-   es neutralizar de manera inmediata tres vectores de riesgo comunes detectados durante un compromiso de seguridad:
-   1. **Aislamiento de Malware/Binarios Inseguros (`-q`):** Detecta si un archivo sospechoso posee permisos especiales activos (`SUID/SGID`) que puedan permitir una escalada de 
-   privilegios. De ser así, remueve dichos bits de forma segura, extrae el nombre base del archivo para evitar subprocesos redundantes y lo traslada a una jaula de cuarentena 
-   dedicada (`/opt/quarantine`). Una vez allí, despoja el archivo de cualquier permiso de ejecución o lectura (`chmod 000`) y transfiere su propiedad absoluta a `root:root`, 
-   dejándolo completamente inofensivo para su posterior análisis forense.
-   2. **Revocación Inmediata de Accesos (`-u`):** Bloquea de manera simultánea la contraseña de un usuario sospechoso, altera su shell por defecto a `/usr/sbin/nologin` para impedir
-   sesiones interactivas, y fuerza la expiración inmediata de su cuenta en el sistema para cerrar cualquier persistencia (sesiones SSH, tareas cron pendientes, etc.).
-   3. **Endurecimiento Masivo de Permisos (`-r`):** Aplica de forma masiva una plantilla de permisos estrictos sobre un directorio crítico. Utiliza una sintaxis optimizada de alta 
-   eficiencia para reconfigurar todos los subdirectorios a `755` y todos los archivos regulares a `644`.
-
-   Uso Típico en las empresas:
-   En el entorno corporativo y de producción, este script es una herramienta indispensable para los equipos de **SOC (Security Operations Center)** y **SysAdmins / DevSecOps Engineers** 
-   en los siguientes contextos:
-   * **Respuesta Automatizada ante Intrusiones (SOAR):** Puede ser invocado automáticamente por un sistema de detección de intrusos (como un SIEM o un agente de Wazuh) en el momento 
-   exacto en que se detecta una anomalía (por ejemplo, la creación de un binario con SUID no autorizado o actividad inusual de un usuario).
-   * **Mitigación del Día a Día:** Resuelve el problema de la lentitud y el error humano durante un incidente. En lugar de que el administrador ejecute manualmente múltiples comandos
-   para degradar un archivo, bloquear un usuario y auditar directorios mientras el atacante sigue activo, este script centraliza y ejecuta la mitigación en milisegundos de forma 
-   estandarizada.
-   * **Hardening Posterior a Despliegues:** Se utiliza para aplicar plantillas de permisos masivas a directorios compartidos o servidores web que han sufrido desconfiguraciones por 
-   malas prácticas de desarrollo (como el uso de `chmod 777`).
-
-   Ejemplo de Ejecución:
-   El script requiere estrictamente privilegios de superusuario (`root`) para interactuar con las cuentas del sistema y la modificación de permisos en `/opt` y `/var/log`.
-
-   **Ejecución con múltiples banderas simultáneas (Mitigación Completa):**
-   sudo ./quarantine_and_lockdown.sh -q /home/usuario/sospechoso.elf -u jdoe -r /var/www/html
-
-   **Ejecución **
-   sudo ./quarantine_and_lockdown.sh -q /tmp/backdoor.py
-
-   Curiosidad Técnica:
-   El script implementa varias técnicas avanzadas de optimización y manejo de bajo nivel en Linux que optimizan el rendimiento y la seguridad:
-   1. exec 3>>"$SALIDA": En lugar de saturar el script abriendo y cerrando el archivo de log en cada línea con el operador >>, el script abre el descriptor de archivos personalizado 
-   3 apuntando al log al inicio del flujo. Todos los comandos envían su salida hacia este descriptor (>&3), lo que reduce drásticamente las operaciones de E/S (Entrada/Salida) y 
-   llamadas al sistema (syscalls), cerrándose limpiamente al finalizar con exec 3>&-.
-   2. ${FILE##*/}: Extrae de manera nativa el nombre del archivo eliminando toda la ruta absoluta previa. Esto reemplaza el uso del comando externo basename, evitando la necesidad de 
-   hacer un fork de un nuevo proceso en el sistema y ahorrando memoria durante la ejecución.
-   3. find "$DIRECTORIO" \( -type d -exec chmod 755 {} + \) -o \( -type f -exec chmod 644 {} + \): Aplica una estructura condicional lógica (-o que actúa como un operador OR) directamente 
-   dentro del binario find. Además, el uso de {} + agrupa los archivos encontrados y los pasa en bloque al comando chmod en una sola llamada en lugar de ejecutar un proceso chmod 
-   por cada archivo individual ({} \;). Esto reduce drásticamente el uso de CPU al procesar directorios con miles de archivos.
-
-_____________________________________________________________________________________________________________________________________________________________________________________
-
+## **quarantine_and_lockend.sh**
+   Nivel Avanzado / Indicent Reponse (IR) **Temas:** Mitigación de Incidentes, Jaulas 

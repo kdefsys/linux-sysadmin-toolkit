@@ -13,6 +13,7 @@ entornos productivos.
 - [auditoria_procesos_largos.sh](#auditoria_procesos_largossh)
 - [monitoreo_cpu_memoria.sh](#monitoreo_cpu_memoriash)
 - [mapeo_jerarquico.sh](#mapeo_jerarquicosh)
+- [anti_mutation_watchdog.sh](#anti_mutation_watchdogsh)
 _____________________________________________________________________________
 
 ## **detectar_procesos_zombie.sh**
@@ -152,3 +153,49 @@ ________________________________________________________________________________
    de procesos del sistema.
 
 _________________________________________________________________________________________________________________________________________________
+
+## **anti_mutation_watchdog.sh**
+   Nivel "Avanzado / Forense" **Temas:** Análisis Dinámico de `/proc`, Monitoreo Asíncrono de Filesystem, Contención Activa (`SIGSTOP`), Manejo de Señales Posix (`trap`), Estructuración de
+   Logs JSON en Caliente.
+
+   Descripción Técnica:
+   Este script implementa un sistema activo de detección y contención temprana de anomalías (HIDS a nivel de procesos) diseñado para mitigar ráfagas de mutación en el sistema de archivos 
+   (comportamiento típicamente asociado a variantes de *Ransomware*) y ejecuciones sospechosas. Su objetivo principal es cerrar la ventana de exposición mediante dos reglas de auditoría 
+   concurrentes:
+   1. **Auditoría Estática de `/proc` (Regla 1):** Escanea el estado de los descriptores ejecutables (`/proc/[PID]/exe`) en todo el sistema para identificar binarios que han sido eliminados 
+   de disco inmediatamente después de entrar en ejecución (enmascaramiento forénfico) o que se ejecutan desde zonas volátiles no estándar como `/tmp` o `/dev/shm`.
+   2. **Correlación de Descriptores de Archivos Dinámicos (Regla 2):** Monitorea de manera asíncrona una ruta crítica del sistema de archivos. Al detectar un volumen de modificaciones que 
+   supera el umbral paramétrico en un intervalo de tiempo reducido, realiza un rastreo milimétrico sobre los descriptores numéricos de archivos abiertos en `/proc/[PID]/fd/` de cada proceso 
+   activo. Una vez identificado el proceso agresor, le inyecta de forma inmediata una señal de suspensión física (`SIGSTOP`) al proceso hijo y a su árbol primario (`PPID`) para neutralizar 
+   la amenaza en memoria RAM antes de que continúe alterando datos, exportando los hallazgos en un reporte forense JSON bien estructurado mediante la captura limpia de señales de 
+   interrupción (`trap`).
+
+   Uso Típico en las empresas:
+   En entornos corporativos, este script se despliega como un agente ligero de endurecimiento (*hardening*) y respuesta ante incidentes en servidores de archivos críticos (como servidores 
+   Samba, repositorios de almacenamiento NFS, carpetas de carga de aplicaciones web o bases de datos no productivas).
+   * **Contexto específico:** Se utiliza principalmente en servidores Linux que carecen de agentes EDR comerciales pesados, actuando como una contramedida reactiva de bajo consumo de 
+   recursos que complementa las políticas de respaldos.
+   * **Problemas del día a día que resuelve:** * Previene la destrucción masiva de información corporativa provocada por un binario malicioso que logre evadir los filtros perimetrales 
+   tradicionales.
+   * Automatiza la primera línea de respuesta (aislamiento del proceso agresor), dándole tiempo valioso al equipo del SOC para analizar la memoria del proceso suspendido sin perder los 
+   archivos ni apagar el servidor.
+   * Detecta intrusiones donde el atacante intenta borrar sus propias herramientas de ejecución del disco (`(deleted)`) para ocultarse de los comandos tradicionales de auditoría como 
+   `ps` o `top`.
+
+   Ejemplo de Ejecución:
+
+   sudo ./anti_mutation_watchdog.sh /shared/archivos_criticos 5 /etc/watchdog/lista_blanca.txt
+
+   Curiosidad Técnica:
+   El script destaca por el uso eficiente de estructuras nativas del sistema operativo Linux y optimizaciones lógicas avanzadas para evitar colisiones de tiempo (race conditions):
+   1. trap cerrar_json_valido SIGINT SIGTERM: Implementa el control de señales POSIX a nivel del kernel. Cuando el administrador detiene el monitoreo mediante Ctrl+C (SIGINT), el script 
+   no muere de golpe corrupting el archivo de auditoría; en su lugar, intercepta la señal, invoca un procesamiento por flujo de líneas con sed -i '$ s/,$//' para remover la última coma 
+   huérfana de la estructura en caliente, concatena el corchete de cierre ] y sanitiza el archivo convirtiéndolo en un arreglo JSON sintácticamente válido para herramientas SIEM.
+   2. for fd_path in /proc/$PID_CHECK/fd/[0-9]* : En lugar de invocar costosas tuberías externas (| grep) que generan subprocesos hijos ralentizando el bucle de contención en microsegundos 
+   cruciales, el script realiza una expansión de comodines puramente numérica sobre la tabla de descriptores directamente en Bash. Combinado con el operador de coincidencia 
+   nativo [[ "$FD_TARGET" == "$DIR_CRITICO"* ]], evalúa las rutas en memoria RAM a una velocidad crítica, permitiendo atrapar procesos veloces como un bucle persistente de dd o un 
+   cifrador concurrente antes de que cierren sus manejadores de archivos.
+   3. break 2: Uso estratégico de la ruptura multinivel de bucles. Al localizar el primer descriptor de archivo apuntando a la zona crítica, aborta instantáneamente tanto la revisión de 
+   descriptores del proceso actual como la búsqueda global de procesos del sistema para proceder directamente al aislamiento con kill -STOP.
+
+___________________________________________________________________________________________________________________________________________________________________________________________

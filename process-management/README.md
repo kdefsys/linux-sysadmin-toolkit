@@ -14,6 +14,7 @@ entornos productivos.
 - [monitoreo_cpu_memoria.sh](#monitoreo_cpu_memoriash)
 - [mapeo_jerarquico.sh](#mapeo_jerarquicosh)
 - [anti_mutation_watchdog.sh](#anti_mutation_watchdogsh)
+- [process_resource_governor.sh](#process_resource_governorsh)
 _____________________________________________________________________________
 
 ## **detectar_procesos_zombie.sh**
@@ -199,3 +200,47 @@ ________________________________________________________________________________
    descriptores del proceso actual como la búsqueda global de procesos del sistema para proceder directamente al aislamiento con kill -STOP.
 
 ___________________________________________________________________________________________________________________________________________________________________________________________
+
+## **process_resource_governor.sh**
+   Nivel: "Avanzado" **Temas:** Control de procesos, Señales POSIX, Concurrencia, Descriptores de Archivos, Arreglos Asociativos, gawk y bc.
+
+   Descripción Técnica:
+   Este script actúa como un demonio (daemon) o servicio en tiempo real que patrulla de manera asíncrona los procesos del sistema operativo. Su objetivo principal es mitigar y 
+   contener de forma automatizada los procesos abusivos que sufren bucles infinitos, colgaduras o fugas de recursos, evitando que saturen la CPU del servidor.
+   1. **Monitoreo Asíncrono:** Cada 4 segundos, el guardián toma una captura de rendimiento cruzando el uso de CPU (`pcpu`) y el tiempo de ejecución persistente del proceso (`etimes`).
+   2. **Mitigación Inicial (Advertencia):** Si un proceso supera los umbrales configurados por primera vez, el script reduce su prioridad al mínimo absoluto (`renice +19`), 
+   permitiendo que el planificador del Kernel (*Scheduler*) balancee la carga hacia tareas prioritarias sin destruir el proceso legítimo.
+   3. **Escalada de Fuerza (Aislamiento):** Si en el siguiente ciclo el proceso persiste evadiendo el control con prioridad mínima, el script determina que está colgado o es 
+   malicioso, enviando una señal de terminación limpia (`SIGTERM`) para fulminarlo. Mantiene un contador interno global indexado en un arreglo asociativo para asegurar que la 
+   historia forense de cada PID no se pierda entre subshells.
+
+   Uso Típico en las empresas:
+   En entornos corporativos y servidores de producción (Web, Base de Datos, Cloud), las empresas se enfrentan diariamente a alertas de monitorización por saturación de hardware. 
+   Este script resolvería problemas críticos del día a día como:
+   * **Bugs de Aplicación en Producción:** Hilos de ejecución mal programados (por ejemplo, consultas SQL mal optimizadas, scripts de backend en Python o Node.js con bucles `while` 
+   infinitos) que bloquean los núcleos del procesador.
+   * **Garantía de Alta Disponibilidad (SLA):** Evita que un solo usuario o proceso secundario (como una tarea cron de respaldos/backups pesada a mitad del día) sature el servidor e 
+   interfiera con las peticiones de los clientes legítimos, manteniendo el sistema usable.
+   * **Mitigación ante Denegaciones de Servicio Internas:** Actúa como una capa automatizada de primera respuesta ante procesos desbocados, dándole tiempo al Administrador de 
+   Sistemas (SysAdmin) de reaccionar sin necesidad de apagar o reiniciar el servidor completo de emergencia.
+
+   Ejemplo de Ejecución:
+   Para iniciar el demonio en modo guardián, se le deben pasar estrictamente 3 argumentos: el umbral de CPU (en porcentaje), el tiempo máximo de gracia (en segundos) y la ruta del 
+   directorio donde escribirá su bitácora forense de auditoría.
+   sudo ./process_resource_governor.sh 40 5 /tmp
+
+   Curiosidad Técnica:
+   El script destaca por emplear comandos complejos combinados con buenas prácticas de rendimiento explicadas en la literatura de administración avanzada de Linux:
+   1. exec 3>>"$REPORTE" y >&3: En lugar de abrir y cerrar el archivo de log con >> en cada línea del bucle (lo cual causa un abuso de operaciones de Entrada/Salida en disco), este 
+   comando abre un Descriptor de Archivo Personalizado (File Descriptor 3) persistente en la memoria del Kernel. Toda la salida redirigida a >&3 se escribe de manera ultra óptima.
+   2. Reconstrucción Dinámica de Comandos con gawk:
+   	gawk '{cmd_full=""; for (i=6; i<=NF; ++i) cmd_full=(cmd_full ? cmd_full" " : "")$i; print $1"|"$2"|"$3"|"$4"|"$5"|"cmd_full}'
+  	El comando ps entrega los argumentos del proceso al final. Si un comando contiene espacios en blanco (ej. python3 exploit.py --run), un extractor simple rompería las variables. 
+   	Este bucle iterativo de gawk une dinámicamente desde el sexto campo hasta el final de la línea (NF), encapsulando el comando entero antes de enviarlo por la tubería.
+   3. Sustitución de Procesos No Bloqueante (done < <(ps ...)): Al alimentar el ciclo while final mediante < <(...) en lugar de una tubería tradicional (ps | while), se evita la 
+   creación de un subshell independiente. Esto asegura que el mapa de memoria del arreglo asociativo (declare -A estados_procesos) guarde los estados globalmente y no se destruya 
+   al terminar la lectura.
+   4. trap cerramos_el_reporte SIGINT: Intercepta la señal de terminación de teclado (Ctrl + C) para ejecutar una función destructora que vuelca estadísticas finales (conteo real de 
+   penalizaciones con la variable $VARIACIONES), limpia el descriptor de archivo (exec 3>&-) y cierra el programa de manera íntegra y elegante.
+
+_____________________________________________________________________________________________________________________________________________________________________________________

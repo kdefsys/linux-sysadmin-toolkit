@@ -124,7 +124,7 @@ while true; do
 		BINARIO_REAL=$(readlink -f "/proc/$PID/exe" 2>/dev/null)
 		[[ -z "$BINARIO_REAL" ]] && continue
 		PADRE_PID=$(gawk '{print $4}' "/proc/$PID/stat" 2>/dev/null)
-		[[ -z "$PPID" ]] && PADRE_PID=0
+		[[ -z "$PADRE_PID" ]] && PADRE_PID=0
 
 		ALERTA=""
 		if [[ "$BINARIO_REAL" == *" (deleted)"* ]]; then
@@ -137,8 +137,8 @@ while true; do
 			if ! esta_en_lista_blanca "$PID"; then
 				TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 				echo "[!] ¡MUTACION DETECTADA! PID: $PID | MOTIVO: $ALERTA"
-				congelar_procesos "$PID" "$PPID"
-				generar_json_reporte "$TIMESTAMP" "$PID" "$PPID" "$BINARIO_REAL" "$ALERTA" ""
+				congelar_procesos "$PID" "$PADRE_PID"
+				generar_json_reporte "$TIMESTAMP" "$PID" "$PADRE_PID" "$BINARIO_REAL" "$ALERTA" ""
 			fi
 		fi
 	done

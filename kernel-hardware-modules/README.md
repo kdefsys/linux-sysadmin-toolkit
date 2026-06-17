@@ -10,7 +10,7 @@ CONTENIDO:
 
 ____________________________________________________________________________________________________________________________________________________________________________________
 
-## **kernel-module-auditor.sh**
+## **kernel_module_auditor.sh**
    Nivel "Intermedio - Avanzado" **Temas:** Kernel Hardening, Sysfs/kernel Modules Administration, I/O Redirection (File Descriptors).
 
    Descripción Técnica:

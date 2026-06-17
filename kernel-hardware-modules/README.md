@@ -6,7 +6,7 @@ núcleo de forma dinámica, permitiendo la inspección técnica, optimización d
 de controladores.
 
 CONTENIDO:
-- [kernel-module-auditor.sh](#kernel-module_auditorsh)
+- [kernel_module_auditor.sh](#kernel_module_auditorsh)
 
 ____________________________________________________________________________________________________________________________________________________________________________________
 

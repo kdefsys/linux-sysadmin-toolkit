@@ -30,6 +30,7 @@ a lo que se encuentra en equipos de infraestructura reales.
 - [acces-control](#access-control)
 - [process-management](#process-management)
 - [storage-filesystems](#storage-filesystems)
+- [kernel-hardware-modules](#kernel-hardware-modules)
 
 ## **daily-tools**
    Herramientas de uso cotidiano para la administración del sistema:
@@ -94,6 +95,30 @@ _____________________________________________________________________________
    - Permite recuperación de fallos, migraciones de discos y muchas cosas más.
 _____________________________________________________________________________
 
+## **kernel-hardware-modules**
+   Este directorio esta dedicado al desarrollo de scripts de auditoria de automatización, auditoría y control de bajo nivel para la gestión de módulos del kernel (`sys_modules`) 
+   y la interacción del sistema operativo con el hardware en entornos Linux.
+   El objetivo de las herramientas contenidas aquí es proporcionar un control granular sobre el comportamiento del núcleo de forma dinámica, permitiendo la inspección técnica, 
+   optimización de recursos en memoria RAM y el endurecimiento (*hardening*) de la seguridad del sistema mediante la gestión de controladores.
+
+   ENFOQUE:
+   Los scripts de este módulo se centran en interactuar con las abstracciones del kernel a través de las siguientes áreas clave:
+   * **Inspección en Tiempo Real:** Análisis del estado actual de la memoria RAM respecto a los controladores activos empleando interfaces de bajo nivel y `/proc/modules`.
+   * **Gestión Dinámica de Módulos:** Automatización para la inserción, remoción y resolución de dependencias de controladores en caliente sin necesidad de reiniciar el sistema.
+   * **Auditoría y Fichas Técnicas:** Extracción de metadatos de archivos de objetos del kernel (`.ko`) para evaluar autores, licencias, firmas de seguridad y parámetros aceptados.
+   * **Hardening & Seguridad (Blacklisting):** Creación de políticas para mitigar vectores de ataque mediante la desactivación automatizada de módulos heredados, puertos vulnerables o 
+   protocolos no utilizados (FireWire, USB específicos, etc.).
+   * **Detección y Auditoría de Hardware:** Aquí entran scripts que interrogan al hardware para saber que hay conectado físicamente a la placa madre, veremos algunas herramientas como
+   (lspci, lsusb, lshw, dmidecode, lscpu, etc)
+   * **Interfaces del kernel con el hardware: ** Linux expone el hardware y los módulos como si fueran archivos de texto. Los scripts de esta seccion pueden automatizar la lectura y
+   modificacion de:
+	- /proc: Para ver los estados del hardware y del entorno del kernel en tiempo real. (ej. /proc/cpuinfo, /proc/meminfo, /proc/modules)
+	- /sys: Para modificar el comportamiento del hardware al vuelo (por ejemplo, scripts para cambiar el perfil de energia de la CPU, controlar el brillo de la pantalla, o apagar
+ 	un puerto USB por completo desde la terminal).
+	- /dev: Gestión de archivos de dispositivos de caracteres y bloques.
+
+____________________________________________________________________________________________________________________________________________________________________________________
+
 ## **Consideraciones**
    - Varios scripts requieren privilegios elevados ('root' o 'sudo')
    - Se recomienda revisar cada script antes de ejecutarlo en entornos
@@ -108,3 +133,4 @@ _____________________________________________________________________________
    - Capacidad de automatización con Bash
    - Enfoque en seguridad y mantenimiento
    - Organización y documentación profesional
+

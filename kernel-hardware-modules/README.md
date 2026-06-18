@@ -7,7 +7,7 @@ de controladores.
 
 CONTENIDO:
 - [kernel_module_auditor.sh](#kernel_module_auditorsh)
-
+- [kernel_boot_persister.sh](#kernel_boot_persistersh)
 ____________________________________________________________________________________________________________________________________________________________________________________
 
 ## **kernel_module_auditor.sh**
@@ -44,3 +44,38 @@ ________________________________________________________________________________
    positivo con uno más largo (como lp_vivid). La bandera -q (quiet) asegura que la comprobación sea silenciosa y no altere los logs.
 
 _____________________________________________________________________________________________________________________________________________________________________________________
+
+## **kernel_boot_persister.sh**
+   Nivel "Avanzado" **Temas:** Kernel Boot Persistence, Hardware Introspection (PCI/USB Bus), Advanced Bash Privileges, Regular Expressions.
+
+   Descripción:
+   Este script automatiza la persistencia y el aprovisionamiento dinámico de configuraciones del espacio del núcleo (Kernel Space) en sistemas GNU/Linux. Su objetivo es doble: 
+   permite inyectar módulos de forma permanente para el arranque del sistema o aplicar un baneo estricto (blacklist) sobre controladores no deseados.
+   A diferencia de configuraciones estáticas comunes, el script ejecuta una Fase de Diagnóstico de Hardware previa mediante introspección de buses físicos (USB y PCI/PCIe) y 
+   análisis de metadatos binarios (modinfo alias) para verificar si el módulo solicitado tiene coherencia con los componentes físicos reales del equipo. Finalmente, aplica los 
+   cambios en caliente sobre la memoria RAM para evitar reinicios innecesarios.
+
+   Uso Típico en las Empresas:
+   En la administración de servidores corporativos, centros de datos y hardening de infraestructura, los cambios volátiles con modprobe no son viables ya que ante un corte de 
+   energía o mantenimiento programado, la configuración se perdería.
+   - Provisionamiento Automatizado de Hardware: Configurar servidores en masa para que carguen automáticamente drivers de red de alto rendimiento (e1000e) o almacenamiento (nvme) 
+   desde el arranque, validando primero si la tarjeta física está instalada en el rack.
+   - Hardening de Puestos de Trabajo y Kioscos: Bloquear permanentemente módulos propensos a ataques o fugas de datos (como almacenamiento masivo USB, cámaras web o drivers de juego) 
+   inyectando directivas de blacklist inquebrantables, reduciendo la superficie de ataque de la compañía de manera drástica.
+
+   Ejemplo de Ejecución:
+
+   sudo ./kernel_boot_persister.sh --blacklist uvcvideo
+
+   Curiosidad Técnica:
+   Este desarrollo implementa tres técnicas avanzadas de administración de sistemas e interpretación en Bash:
+   1. La inyección segura con tee: En Linux, hacer sudo echo "texto" > /etc/archivo.conf falla porque la redirección > la ejecuta el shell del usuario sin privilegios. El script 
+   resuelve esto usando echo "..." | tee "$ARCHIVO_CONF" >/dev/null. Al anteponer el sudo al script completo, tee hereda los permisos para abrir y escribir en zonas restringidas del 
+   sistema de archivos real (/etc/modprobe.d y /etc/modules-load.d).
+   2. Introspección por Expresiones Regulares Extendidas (grep -qiE): Al interrogar los buses de hardware con lsusb o lspci, se aplica una sola tubería con el flag -E para evaluar 
+   múltiples patrones lógicos mediante operadores OR (video|camera|wireless|vga), logrando mapear en una sola línea de código si el dispositivo físico existe.
+   3. Mapeo de Firmas Binarias (modinfo -F alias): Como "Plan B" de diagnóstico, si el módulo no está en las listas predefinidas, el script inspecciona los metadatos del archivo 
+   binario comprimido del controlador en disco para extraer sus registros de alias de hardware. Si el driver cuenta con alias válidos, el script deduce programáticamente que 
+   interactúa con elementos físicos.
+
+____________________________________________________________________________________________________________________________________________________________________________________

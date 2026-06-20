@@ -8,6 +8,7 @@ de controladores.
 CONTENIDO:
 - [kernel_module_auditor.sh](#kernel_module_auditorsh)
 - [kernel_boot_persister.sh](#kernel_boot_persistersh)
+- [scsi_storage_auditor.sh](#scsi_storage_auditorsh)
 ____________________________________________________________________________________________________________________________________________________________________________________
 
 ## **kernel_module_auditor.sh**
@@ -79,3 +80,39 @@ ________________________________________________________________________________
    interactúa con elementos físicos.
 
 ____________________________________________________________________________________________________________________________________________________________________________________
+
+## **scsi_storage_auditor.sh**
+   Nivel "Avanzado" **Temas:** Subsistema SCSI, Infraestructura de udev, Sistema de archivos Sysfs (`/sys`), Enlaces Persistentes (`/dev/disk/by-id`), Procesamiento de streams (`gawk`).
+
+   Descripción Técnica:
+   Este script es una herramienta de auditoría forense y de infraestructura en caliente de bajo nivel. Su objetivo principal es mapear la ruta lógica de un dispositivo de bloque 
+   (`/dev/sdX`) hacia sus orígenes físicos y virtuales dentro del sistema operativo.
+   El script automatiza tres tareas críticas:
+   1. Extrae y descompone la dirección jerárquica **HCTL** (`[Host:Channel:Target:LUN]`) del dispositivo usando `lsscsi`.
+   2. Realiza una introspección directa en la memoria RAM (dentro de `/sys/devices/` mediante `udevadm`) para obtener la telemetría del hardware, determinando el modelo de fábrica, 
+   tamaño en sectores y la naturaleza física del almacenamiento (`SSD/FLASH` o `MECANICO/HDD`).
+   3. Rastreará y aislará los enlaces simbólicos persistentes en `/dev/disk/by-id/` asociados al disco para garantizar operaciones de montaje seguras.
+
+   Uso Típico en las empresas:
+   En entornos corporativos y centros de datos (Datacenters), los servidores se conectan a cabinas de almacenamiento masivo externas (SAN) mediante redes de fibra óptica o iSCSI. 
+   Estas cabinas inyectan constantemente nuevos volúmenes lógicos (LUNs) al sistema.
+   * **Inestabilidad de nombres tradicionales:** Los nombres como `/dev/sdb` o `/dev/sdc` son volátiles y pueden cambiar de orden de manera asíncrona entre reinicios del kernel. 
+   Si un administrador configura un servicio crítico o el archivo `/etc/fstab` apuntando a `/dev/sdb`, el servidor podría fallar o corromper datos tras un mantenimiento. Este 
+   script mitiga el error humano proveyendo instantáneamente las rutas `/dev/disk/by-id/` idóneas e indestructibles para la configuración.
+   * **Auditoría de rendimiento express:** Permite a los ingenieros de DevOps y SysAdmins verificar en segundos si un disco asignado a una base de datos es realmente un estado 
+   sólido (SSD) o un disco mecánico lento, consultando directamente la mente del kernel en `/sys` sin interrumpir los servicios.
+
+   Ejemplo de Ejecución:
+
+   sudo ./scsi_storage_auditor.sh sda
+
+   Curiosidad Técnica:
+   * Redirección de Procesos No Bloqueante (< <(...)): En lugar de generar archivos temporales o usar tuberías tradicionales (|) que levantan subshells donde se pueden perder 
+   las variables, el script utiliza Process Substitution para pasarle la salida de lsscsi de forma directa a gawk como si fuera un archivo de lectura plano.
+   * Inyección de expresiones regulares dinámicas en gawk: En la Fase 1, el comando gawk utiliza la función interna gsub(/[\[\]]/, "", cadena) para limpiar y eliminar quirúrgicamente 
+   los corchetes de la dirección SCSI mediante expresiones regulares antes de aplicar el comando split(). Esto garantiza que los índices numéricos queden limpios y puros en el array.
+   * Auditoría de enlaces por patrón exacto: En la Fase 3, el filtro de búsqueda utiliza un grep -iE optimizado con anclajes de fin de línea ($) y patrones específicos para 
+   particiones: /${NOMBRE}$|/${NOMBRE}p[0-9]|/${NOMBRE}[0-9]. Esto evita falsos positivos (por ejemplo, que al auditar el disco sda se terminen listando los enlaces de un disco 
+   llamado sdaa o sdab).
+
+_____________________________________________________________________________________________________________________________________________________________________________________

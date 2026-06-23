@@ -9,6 +9,7 @@ CONTENIDO:
 - [kernel_module_auditor.sh](#kernel_module_auditorsh)
 - [kernel_boot_persister.sh](#kernel_boot_persistersh)
 - [scsi_storage_auditor.sh](#scsi_storage_auditorsh)
+- [usb_security_guard.sh](#usb_security_guardsh)
 ____________________________________________________________________________________________________________________________________________________________________________________
 
 ## **kernel_module_auditor.sh**
@@ -114,5 +115,40 @@ ________________________________________________________________________________
    * Auditoría de enlaces por patrón exacto: En la Fase 3, el filtro de búsqueda utiliza un grep -iE optimizado con anclajes de fin de línea ($) y patrones específicos para 
    particiones: /${NOMBRE}$|/${NOMBRE}p[0-9]|/${NOMBRE}[0-9]. Esto evita falsos positivos (por ejemplo, que al auditar el disco sda se terminen listando los enlaces de un disco 
    llamado sdaa o sdab).
+
+_____________________________________________________________________________________________________________________________________________________________________________________
+
+## **usb_security_guard.sh**
+   Nivel "Avanzado" **Temas:** Subsistema de almacenamiento masivo USB, Introspección de sysfs (removable), Propiedades de Hardware dinámicas (udevadm), Expresiones Regulares
+
+   Descripción Técnica:
+   Este desarrollo implementa una auditoría defensiva automatizada en caliente sobre dispositivos de bloque individuales. El script lee la telemetría del kernel almacenada en la 
+   memoria RAM para identificar si un disco es de almacenamiento fijo o removible. Si se trata de un medio extraíble (Pendrive/Disco Externo), intercepta la jerarquía de hardware 
+   de abajo hacia arriba en el bus USB para extraer identificadores físicos únicos invariables de fábrica: Vendor ID, Product ID y el número de serie de la unidad.
+
+   Uso Típico en las empresas:
+   Utilizado activamente por los equipos de Ciberseguridad (SecOps) y Auditoría Forense Informática como un mecanismo de primer nivel en políticas de Data Loss Prevention (DLP) y 
+   control de medios perimetrales.
+   - Detección de exfiltración de datos no autorizada: El script permite aislar de forma programática las firmas exactas del fabricante del hardware de almacenamiento masivo que se 
+   conecta a las estaciones de trabajo de la empresa.
+   - Inyección de logs para correlación de eventos (SIEM): Al extraer de manera confiable el número de serie único y los identificadores de producto, la salida del script es ideal 
+   para ser parseada y enviada a herramientas centrales de monitoreo (como Splunk o Elastic Stack) para generar alertas de incidentes de seguridad y auditorías de inventario de 
+   hardware en tiempo real.
+
+   Ejemplo de Ejecución:
+
+   sudo ./usb_security_guard.sh sdb
+
+   Curiosidades Técnicas:
+   * **Evaluación Aritmética Avanzada (`(( ... ))`):** En lugar de usar los operadores clásicos de texto (`[ "$VARIABLE" -eq 0 ]`), el script utiliza la sintaxis de evaluación 
+   aritmética nativa de Bash `if (( ARCHIVO_VIRTUAL == 0 ))`. Esto optimiza el rendimiento del script al procesar el valor numérico binario (`0` o `1`) del estado `removable` 
+   directamente en el procesador, sin necesidad de invocar subprocesos de comparación de cadenas.
+   * **Mapeo de Atributos del Padre con Filtro de Instancia Única (`grep -m1`):** El comando `udevadm info -a` genera un volcado masivo de texto ascendente recorriendo todos los 
+   dispositivos padres en el árbol de `/sys`. Para evitar colisiones o sobreescrituras (ya que múltiples controladores de la placa madre pueden tener campos como `serial`), 
+   el script implementa `grep -m1`. Esto le ordena al motor de búsqueda detenerse inmediatamente tras la primera coincidencia, aislando quirúrgicamente los datos del dispositivo 
+   periférico físico más cercano.
+   * **Estrategia Defensiva de Fallback Automático (`[[ -z ... ]]`):** El script implementa un mecanismo de redundancia industrial en la **Fase 3**. Si por restricciones de permisos 
+   en la arquitectura de hardware el modo clásico de lectura de atributos de `udevadm` retorna una cadena vacía, el script lo detecta dinámicamente mediante el flag `-z` y activa 
+   un plan de contingencia que extrae los identificadores directamente desde la base de datos de propiedades de entorno con `-q property`.
 
 _____________________________________________________________________________________________________________________________________________________________________________________

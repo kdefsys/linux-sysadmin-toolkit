@@ -1,90 +1,149 @@
 #!/bin/bash
-###Nombre: quarantine_and_lockdown.sh
+###Nombre: quarantine2
 ###Autor: kdefsys
-###Escript avanzado y aplicativo en Bash que actúe como un motor de mitigación interactivo,
-###permitiendo enviar archivos a una jaula de cuarentena segura, revocar accesos a usuarios de forma
-###temporal, y aplicar plantillas de permisos estrictas sobre directorios críticos de forma masiva.
-###Uso: ./quarantine_and_lockdown.sh -q <archivo> -u <usuario> -r <directorio>
+###Uso: sudo ./quarantine2 -q <ruta_archivo_sospechoso> -r <ruta_directorio> -u <nombre_usuario>
 
 if [[ "$EUID" -ne 0 ]]; then
-	echo "El script debe de ejecutarse con privilegios de superusuario"
+	echo "El script debe de ejecutarse con permisos de superusuario"
 	exit 1
 fi
 
-SALIDA="/var/log/lockdown-action.log"
-FECHA=$(date +"%Y-%m-%d_%H:%M:%S")
+guia_ejecucion() {
+	echo "El script debe de ser lanzado asi:"
+	echo "sudo ./quarantine_and_lockdown.sh con opciones: "
+	echo "-q <ruta_archivo>: Para poner en cuarentena a ese archivo sospechoso"
+	echo "-u <nombre_usuario>: Bloquear el usuario comprometido"
+	echo "-r <ruta_directorio>: Sospecha de persistencia o alteracion de permisos en directorios criticos"
+	echo "-h: Se muestra la guia de ejecucion"
+	echo -e "\n"
+}
+
+if [[ "$#" -eq 0 ]]; then
+	echo "El script no tiene argumentos "
+	guia_ejecucion
+	exit 1
+fi
+
+##
+# Variables globales del script
+##
+
+REPORTE="/var/log/lockdown-action.log"
 JAULA="/opt/quarantine"
 
-mkdir -p "$JAULA"
-exec 3>>"$SALIDA"
+exec 3>>"$REPORTE"
 
-while getopts :q:u:r: opt; do
+CUARENTENA=0 ; BLOQUEO=0 ; PERSISTENCIA=0
+
+##
+# Menu de getopts
+##
+
+while getopts :q:r:u:h opt; do
 	case "$opt" in
-	    q)
-		FILE="$OPTARG"
-		echo -e "REPORTE DEL ARCHIVO ${FILE} A LA HORA: ${FECHA}\n\n"
-		if [[ -f "$FILE" ]]; then
-	       		if [[ -u "$FILE" || -g "$FILE" ]]; then
-        	        	if chmod u-s,g-s "$FILE" 2>&3; then
-                	        	echo "El archivo ${FILE} tiene permisos especiales activos. Removidos con éxito." >&3
-	                	else
-        	                	echo "ERROR: Falló la remoción de permisos especiales en ${FILE}" >&3
-	                	        echo -e "\n" >&3
-        	                	continue
-	        		fi
-        	        else
-                		echo "El archivo no cuenta con permisos SUID/SGID. Procediendo directamente al aislamiento." >&3
-	                fi
-	                nombre_basico="${FILE##*/}"
-        	        if mv "${FILE}" "${JAULA}/${nombre_basico}" 2>&3; then
-                		if chmod 000 "${JAULA}/${nombre_basico}" 2>&3 && chown root:root "${JAULA}/${nombre_basico}" 2>&3; then
-                        		echo "Mitigación exitosa: Movido a ${JAULA}/, permisos fijados en 000 y propietario root:root" >&3
-	                	else
-					echo "ERROR: Falló la reconfiguración de seguridad (000 / root:root) en la jaula" >&3
-				fi
-	                else
-				echo "ERROR: No se pudo mover el archivo hacia la jaula de cuarentena" >&3
- 	                fi
-            	else
-                	echo "El archivo ${FILE} no existe" >&3
-            	fi
-           	echo -e "\n\n" >&3
-		;;
-	    u)
-		USUARIO="$OPTARG"
-		echo -e "REPORTE DEL USUARIO ${USUARIO} A LA HORA: ${FECHA}\n\n"
-		if getent passwd "$USUARIO" 2> /dev/null; then
-			echo "Si existe el usuario, procedemos a bloquear su contraseña" >&3
-			usermod -L "$USUARIO" 2>&3
-			echo "Cambiamos su shell por /usr/sbin/nologin" >&3
-			usermod -s "/usr/sbin/nologin" "$USUARIO" 2>&3
-			echo "Expiramos su cuenta de inmediato" >&3
-			usermod -e now "$USUARIO" 2>&3
-		else
-			echo "El usuario ${USUARIO} no existe en el sistema" >&3
-		fi
-		;;
-
-	    r)
-		DIRECTORIO="$OPTARG"
-		echo -e "REPORTE DEL DIRECTORIO: $DIRECTORIO A LA HORA: ${FECHA}\n\n"
-		if [[ -d "$DIRECTORIO" ]]; then
-			echo "El directorio: $DIRECTORIO existe, entonces procedemos a cambiar los permisos: " >&3
-			if find "$DIRECTORIO" \( -type d -exec chmod 755 {} + \) -o \( -type f -exec chmod 644 {} + \) 2>&3; then
-				echo "Los cambios de permisos masivos fueron todo un exito" >&3
-			else
-				echo "Algo fallo en los cambios" >&3
-			fi
-		else
-			echo "El directorio: $DIRECTORIO no existe" >&3
-		fi
-		;;
-
-	    *)
-		exit 1
+		q)
+		  CUARENTENA=1
+		  ARCHIVO=$OPTARG
+		  ;;
+		u)
+		  BLOQUEO=1
+		  USUARIO=$OPTARG
+		  ;;
+		r)
+		  PERSISTENCIA=1
+		  DIRECTORIO=$OPTARG
+		  ;;
+		h)
+		  guia_ejecucion
+		  exit 0
+		*)
+		  echo "Opción invalida"
+		  exec 3>&-
+		  exit 1
 	esac
 done
 
+if (( CUARENTENA == 1 )); then
+	echo "==========================================================================" >&3
+	echo "===================== CUARENTENA DEL ARCHIVO $ARCHIVO ====================" >&3
+	echo "==========================================================================" >&3
+	echo "FECHA: $(date '+%Y-%m-%d %H-%M-%S')" >&3
+	if [[ -f "$ARCHIVO" ]]; then
+		echo "El archivo si está registrado en el sistema" >&3
+		if [[ -u "$ARCHIVO" || -g "$ARCHIVO" ]]; then
+			if chmod u-s,g-s "$ARCHIVO" 2>/dev/null; then
+				echo "El archivo ha sido removido para evitar escalada de privilegios" >&3
+			else
+				echo "No se pudo remover los permisos especiales del archivo" >&3
+			fi
+		fi
+		if [[ ! -d "$JAULA" ]]; then
+			mkdir "$JAULA"
+		fi
+		NOMBRE_BASE=$(basename "$ARCHIVO")
+		if mv "$ARCHIVO" "${JAULA}/${NOMBRE_BASE}" 2>/dev/null; then
+			echo "El archivo ha sido movido a la jaula correctamente" >&3
+			if chown root:root "${JAULA}/${NOMBRE_BASE}" 2>/dev/null; then
+	                        echo "Se cambió correctamente los propietarios root:root" >&3
+                	else
+                        	echo "Hubo un error al cambiar los propietarios del archivo en la jaula" >&3
+	                fi
+        	        if chmod 000 "${JAULA}/${NOMBRE_BASE}" 2>/dev/null; then
+                	        echo "Se cambió correctamente los permisos del archivo a 000" >&3
+	                else
+        	                echo "Hubo un error al cambiar los permisos a 000" >&3
+ 	               fi
+		else
+			echo "Hubo un error al mover el archivo a la jaula" >&3
+		fi
+	else
+		echo "El archivo no existe en el sistema" >&3
+	fi
+fi
+
+if (( BLOQUEO == 1 )); then
+	echo "============================================================================" >&3
+	echo "===================== BLOQUE DEL USUARIO $USUARIO ==========================" >&3
+	echo "============================================================================" >&3
+	echo "FECHA: $(date '+%Y-%m-%d %H-%M-%S')" >&3
+	if getent passwd "$USUARIO" &>/dev/null; then
+		echo "El usuario si existe en la base de datos del sistema" >&3
+		if usermod -L "$USUARIO" 2>/dev/null; then
+			echo "Se bloqueó correctamente la contraseña del usuario" >&3
+		else
+			echo "No se pudo bloquear la contraseña del usuario" >&3
+		fi
+		if usermod -s "/usr/sbin/nologin" "$USUARIO" 2>/dev/null; then
+			echo "Cambiamos su shell a /usr/sbin/nologin para que no pueda iniciar sesion" >&3
+		else
+			echo "No se pudo cambiar el shell, el usuario todavia puede iniciar sesion" >&3
+		fi
+		if usermod -e now "$USUARIO" 2>/dev/null; then
+			echo "La cuenta del usuario ha sido expirada correctamente" >&3
+		else
+			echo "No se pudo expirar la cuenta del usuario" >&3
+		fi
+	else
+		echo "El usuario no existe en la base de datos del sistema" >&3
+	fi
+fi
+
+if (( PERSISTENCIA == 1 )); then
+	echo "==============================================================================" >&3
+	echo "================== ANÁLISIS DEL DIRECTORIO: $DIRECTORIO ======================" >&3
+	echo "==============================================================================" >&3
+	echo "FECHA: $(date '+%Y-%m-%d %H-%M-%S')" >&3
+	if [[ -d "$DIRECTORIO" ]]; then
+		echo "El directorio si existe en el sistema" >&3
+		if find "$DIRECTORIO" \( -type d -exec chmod 755 {} + \) -o \( -type f -exec chmod 644 {} + \) &>/dev/null; then
+			echo "Los subdirectorios han sido cambiado sus permisos a 755 correctamente" >&3
+			echo "Los archivos han sido cambiado sus permisos a 644 correctamente" >&3
+		else
+			echo "No se pudo cambiar los permisos" >&3
+		fi
+	else
+		echo "El directorio a analizar no existe en el sistema" >&3
+	fi
+fi
+
 exec 3>&-
-
-

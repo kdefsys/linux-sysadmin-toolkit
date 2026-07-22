@@ -10,7 +10,7 @@ prácticas de scripting.
 
 - [registro_diario.sh](#registro_diariosh)
 - [usuarios_procesos_top10.sh](#usuarios_procesos_top10sh)
-- [limpieza_enlaces.sh](#limpieza_enlacessh)
+- [limpieza_enlaces_rotos.sh](#limpieza_enlaces_rotossh)
 - [limpieza_contenido_logs.sh](#limpieza_contenido_logssh)
 - [control_usuarios_permisos.sh](#control_usuarios_permisossh)
 - [mensajeria.sh](#mensajeriash)
@@ -72,7 +72,7 @@ _____________________________________________________________________________
 
 _____________________________________________________________________________
 
-## **limpieza_enlaces.sh**
+## **limpieza_enlaces_rotos.sh**
    Nivel Avanzado **Temas:** enlaces simbólicos, find,
    rm, tee, xargs, redirecciones
 
@@ -82,9 +82,6 @@ _____________________________________________________________________________
    detalles de los archivos eliminados.
    - Combinación de comandos:
     - 'fin -type l ! -exec test -e {} \; -print' -> identifica enlaces rotos
-    - 'tee -a "$LOG_FILE"' -> imprime en pantalla y regresa al log simultáneamente
-    - 'xargs -r rm -v >> "$LOG_FILE" 2>&1' -> elimina los enlaces y agrega la
-   salida detallada al log, incluyendo errores.
 
    Uso Típico en empresas:
    - Mantener **directorios compartidos o servidores limpios**, evitando
@@ -94,8 +91,8 @@ _____________________________________________________________________________
    Curiosidad Técnica:
    - El uso de ! es equivalente a -not y en este caso junto con test -e, permite
    filtrar enlaces rotos de forma eficiente.
-   - 'xargs -r' asegura que 'rm' solo se ejecute si 'find' realmente encuentra
-   enlaces rotos, evitando errores innecesarios.
+   - 'readlink "$enlace" ' nos ayuda a saber a que ruta apuntaba nuestro enlace simbólico,
+   asi se haya eliminado, queda guardado y el readlink lo saca a relucir.
 
 _____________________________________________________________________________
 

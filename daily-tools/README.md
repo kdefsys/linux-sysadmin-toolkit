@@ -9,7 +9,7 @@ prácticas de scripting.
 # Contenido
 
 - [registro_diario.sh](#registro_diariosh)
-- [usuarios_procesos.sh](#usuarios_procesossh)
+- [usuarios_procesos_top10.sh](#usuarios_procesos_top10sh)
 - [limpieza_enlaces.sh](#limpieza_enlacessh)
 - [limpieza_contenido_logs.sh](#limpieza_contenido_logssh)
 - [control_usuarios_permisos.sh](#control_usuarios_permisossh)
@@ -43,7 +43,7 @@ _____________________________________________________________________________
  
 _____________________________________________________________________________
 
-## **usuarios_procesos.sh**
+## **usuarios_procesos_top10.sh**
    Nivel Intermedio **Tema:** ps, gawk, sort, uniq,
    head, tuberias, arreglos asociativos
 
@@ -52,7 +52,7 @@ _____________________________________________________________________________
    - Genera un txt ('proc_user.txt') que registra el numero de procesos por 
    usuario
    - Utiliza tuberías para **procesar la salida de ps aux**, extraer el usuario
-   ('gawk 'BF{FS=":"} {print $1}''), contar procesos con ('uniq -c'), y
+   ('gawk -F : '{print $1}'), contar procesos (wc -l), y
    ordenarlos en forma descendente con ('sort -k 2nr').
 
    Uso Típico en empresas:
@@ -67,7 +67,8 @@ _____________________________________________________________________________
    - Usamos el comando mapfile para asi poder generar un arreglo inteligente que entienda
    que una linea representa un elemento del array, asi nos eviatmos el problema
    si un usuario tiene espacios en su nombre, el mapfile lo guarda como un unico
-   elemento, asi en el for solo tendriamos que usar "${LIST_USER[@]}".
+   elemento, asi en el for solo tendriamos que usar "${uids[@]}".
+   - El uso de ps -U uidlist para listar todos los procesos que tiene por UID al especificado en esa lista.
 
 _____________________________________________________________________________
 

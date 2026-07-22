@@ -285,29 +285,15 @@ ________________________________________________________________________________
 
    2. Verificar el directorio tiempo después para auditar alteraciones: ./auditoria_integridad.sh -d /home/kdefsys/proyectos -v -f /home/kdefsys/firmas/auditoria.db
 
-   Salida Esperada:
-
-   =====REPORTE=====
-
-
-   Archivos Modificados
-
-   /home/kdefsys/proyectos/daily-tools/mensajeria.sh
-
-   Archivos Creados
-
-   /home/kdefsys/proyectos/daily-tools/test_exploit.py
-
-   Archivos Eliminados
-
-   /home/kdefsys/proyectos/daily-tools/limpieza_enlaces.sh
-
    Curiosidad Técnica:
-   - exec 3>>"$SALIDA" y exec 4>>"$SALIDA2": En lugar de abrir y cerrar constantemente los archivos de la base de datos dentro de bucles o comandos individuales (lo cual genera un alto impacto de Entrada/Salida en el disco), el script secuestra los descriptores de archivo 3 y 4 a nivel de proceso. Toda la salida del comando find se canaliza directamente
-   a estos canales de comunicación abiertos (>&3 y >&4), optimizando drásticamente la velocidad de escritura en directorios con miles de archivos.
-   - comm -23 "$SALIDA2" "$SALIDA": El uso tradicional de bucles anidados para comparar dos listas de texto es extremadamente lento ($O(N^2)$). Tu script implementa una solución de 
-   alto rendimiento ordenando previamente los archivos (sort) y procesándolos con comm. El parámetro -23 suprime las líneas exclusivas del segundo archivo y las líneas comunas, 
-   dejando de manera nativa y ultra veloz únicamente los registros que han sido modificados o creados en el estado actual, procesándolos limpiamente con gawk en una sola línea de 
-   ejecución.
-
+   - Filtro de nombres con espacios (gawk '{ $1=""; print substr($0,2) }'): Por defecto, la salida de sha256sum entrega la estructura HASH  RUTA_DEL_ARCHIVO. Un awk '{print $2}' 
+   convencional fallaría estrepitosamente si el nombre de la ruta contiene espacios (solo tomaría la primera palabra). Con $1="", el script vacía el primer campo (el hash) y 
+   substr($0, 2) extrae la línea restante a partir del segundo carácter, conservando intacto el nombre completo del archivo con todos sus espacios.
+   - Comparación limpia por conjuntos (comm -23 y comm -13): El comando comm requiere que los archivos estén previamente ordenados (sort). Al usar la bandera -23, compara el snapshot 
+   nuevo contra el viejo e imprime únicamente las líneas presentes en el primero pero ausentes en el segundo (archivos nuevos o modificados). De forma inversa, -13 extrae los 
+   archivos que existían en el viejo pero no en el nuevo (archivos eliminados).
+   - Búsqueda literal en modo silencioso (grep -Fq "$file" ...): Para saber si un archivo en conflicto fue modificado o creado, el script busca la ruta en la base antigua. 
+   La opción -F (Fixed Strings) le indica a grep que trate el nombre del archivo como una cadena de texto puro (evitando que puntos o caracteres especiales en las rutas se 
+   interpreten como expresiones regulares). La opción -q (Quiet) suprime la impresión en pantalla y retorna inmediatamente un código de estado 0 (éxito) o 1 (fallo), optimizando al 
+   máximo el rendimiento dentro de las condicionales if.
 ___________________________________________________________________________________________________________________________________________________________________________________

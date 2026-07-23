@@ -197,7 +197,7 @@ _____________________________________________________________________________
    - getent passwd: A diferencia de leer el archivo /etc/passwd directamente, este comando
    es más robusto ya que puede consultar usuarios en base de datos externas como LDAP o AD si
    el servidor está integrado en una red empresarial.
-   - grep -i -m 1 "^$nameUser ": El uso del ancla ^ y el espacio final garantiza que si buscas
+   - grep -i -m1 "^$nameUser ": El uso del ancla ^ y el espacio final garantiza que si buscas
    al usuario "Ana", no coincida por error con "Anabel" o "Anastasia".
    - gawk '{print $2}': Se utiliza para extraer específicamente la columna de la terminal
    (tty o pts) de la salida del comando who, permitiendo que el mensaje llegue al dispositivo

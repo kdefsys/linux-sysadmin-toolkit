@@ -1,38 +1,37 @@
 #!/bin/bash
 ### Nombre: mensajeria.sh
 ### Autor: kdefsys
-###Script que manda una mensajeria a otro usuario con su respectivo terminal
-### Uso: ./mensajeria.sh
+### Descripción: Este script permite enviar un mensaje de texto en tiempo real a otro usuario registrado en el sistema
+### identificando automáticamente la terminal (TTY/PTS) en la que se encuentra conectado.
+### Uso: ./mensajeria.sh <usuario>
 
-read -p "Introduzca el nombre del usuario a mandar la mensajeria: " nameUser
-
-if ! getent passwd "$nameUser" > /dev/null; then
-	echo "Usuario inexistente en el servidor"
-	echo "Procedemos a salir del script"
+if [[ "$#" -ne 1 ]]; then
+	echo "Los argumentos no son válidos"
+	echo "El script debe ser ejecutado así: $0 <usuario>"
 	exit 1
 fi
 
-echo "Usuario encontrado con exito. Continuamos..."
+USUARIO="$1"
 
-## Hasta acá hemos demostrado si el usuario receptor del mensaje existe o no
-## Ahora vamos a obtener su respectivo terminal
+if getent passwd "$USUARIO" 2>/dev/null; then
+	if ! who | grep -q "^$USUARIO " 2>/dev/null; then
+		echo "El usuario no está conectado"
+		echo "Finalizamos el proceso"
+		exit 1
+	else
+		echo "El usuario si está conectado"
+		read -p "Ingrese el mensaje que le quiere enviar: " mensaje
+		TERMINAL=$(who | grep -i -m1 "^$USUARIO" | gawk '{print $2}')
+		if echo "$mensaje" | write "$USUARIO" "$TERMINAL"; then
+			echo "El mensaje fue enviado con éxito"
+		else
+			echo "El mensaje no se pudo enviar con éxito"
+		fi
+	fi
 
-terminal=$(who | grep -i -m 1 "^$nameUser" | gawk '{print $2}')
-
-if [[ -n "$terminal" ]]; then
-	echo "Terminal encontrado ($terminal )correctamente"
-	echo "Continuamos con el proceso..."
 else
-	echo "No se encontro terminal relacionado con el usuario"
-	echo "Saliendo del script ... "
+	echo "El usuario no existe en la base de datos del sistema"
+	echo "Saliendo del script..."
 	exit 1
 fi
-
-read -p "Escribe el mensaje para $nameUser: " mensaje
-
-echo "$mensaje" | write "$nameUser" "$terminal"
-
-echo "Mensaje enviado correctamente"
-
-
 

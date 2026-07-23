@@ -136,10 +136,10 @@ _____________________________________________________________________________
    - Este script realiza un control integral sobre usuarios y permisos en un
    sistema Linux.
    - Primero, identifica todos los usuarios cuyo shell sea '\bin\bash' leyendo
-   '/etc/passwd' con 'gawk' y almancenando los resultados en un archivo temporal
+   '/etc/passwd' con 'gawk'.
    - Luego, analiza un directorio compartido ('ingresado como parámetro') para 
    detectar archivos que **no sean legibles por el grupo**, utilizando 'find' 
-   con '-not -perm -g=r' y generando un registro temporal.
+   con '! -perm -g=r' y generando un registro temporal.
    - Al final, el script imprime en patanlla los resultados resumidos: usuarios
    bash, total de archivos no legibles y la fecha/hora de ejecución.
 
@@ -155,13 +155,14 @@ _____________________________________________________________________________
 
    Curiosidad Técnica
    - Combina lectura de archivos del sistema (/etc/passd) con gawk para separar
-   campos de manera precisa, evitando errores con nombres de usuarios o shells
+   campos de manera precisa, evitando errores con nombres de usuarios o shells usando
+   este comando gawk -F : '$7~/^\/bin\/bash/{print $1}'
    - Maneja archivos temporales para consolidar información y luego los elimina,
    evitando saturar el sistema con logs innecesarios
-   - Usa find -not -perm -g=s para identificar archivos que no cumplen con
+   - Usa find ! -perm -g=s para identificar archivos que no cumplen con
    permisos de grupo, una técnica profesional común en auditorías de seguridad
-   - Usamos el wc -l < "$SALIDA" el redireccionamiento de entrada para que así
-   en el printf aparezca solo el numero y no el nombre del archivo
+   - Usamos el printf "%s\n" "${array[@]}" para que así en el printf aparezca el contenido
+   del arreglo construido con mapfile -t.
 
 _____________________________________________________________________________
 

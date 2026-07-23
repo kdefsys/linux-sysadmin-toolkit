@@ -207,7 +207,7 @@ ________________________________________________________________________________
 
 ## **monitor_recursos_umbral.sh**
    Nivel Intermedio **Temas:** Monitoreo de Recursos, Descriptores de Archivo, Automatización, Parsing
-   de Texto
+   de Texto, ruta /proc/
 
    Descripción Técnica:
    Este script actúa como un sistema de alerta temprana para servidores Linux. Se objetivo
@@ -236,9 +236,9 @@ ________________________________________________________________________________
    - Descriptores de Archivo (exec 3>> ): En lugar de abrir y cerrar el log en cada linea de código
    el script abre un "canal" dedicado(el número 3) que permanece abierto hasta el final, optimizando
    el rendimiento de entrada/salida (I/O).
-   - Tubería de Filtrado Aritmético: Combina top en modo batch (-bn1) con gawk para realizar
-   una suma aritmética de estados user y system, obteniendo así la carga real de trabajo en CPU sin
-   contar el tiempo de espera.
+   - El uso de /proc/stat para sacar el consumo de CPU con los campos, user, nice, system, idle, iowait, irq,
+   softirq, steal.
+   - El uso de /proc/meminfo para sacar el consumo de Memoria RAM. Usando los registros de MemTotal y MemAvailable
 
    Salida de Ejemplo:
    ==========REPORTE: '2026-04-19 19:30:05'==========

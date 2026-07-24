@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 ## **auditar_symlinks_rotos.sh**
    Nivel Intermedio **Temas:** enlaces simbólicos,
-   find, readlink, logs, validaciones
+   find, readlink, logs, validaciones, descriptores de archivos
 
    Descripción Técnica:
    Este script es una herramienta de administración de sistemas diseñada para la detección 
@@ -42,13 +42,15 @@ ________________________________________________________________________________
 
    chmod u+x auditar_symlinks_rotos.sh
 
-   ./auditar_symlinks_rotos.sh /var/www/html/assets
+   ./auditar_symlinks_rotos.sh -d <directorio_objetivo> -f <ruta_destino_log> -h [help]
 
    Curiosidad Técnica:
-   - 'find type l -not -exec test -e {} \;' para detectar symlinks rotos
-   - 'readlink' para obtener el destino del enlace aunque el destino no exista
+   - 'find type l ! -exec test -e {} \;' para detectar symlinks rotos y guardarlos en un mapfile -t enlaces_rotos
+   - 'readlink -f "$enlace"' para obtener el destino del enlace aunque el destino no exista
    Esto demuestra que un symlink siempre conserva la ruta destino como texto,
-   independientemente de si el archivo real sigue presente 
+   independientemente de si el archivo real sigue presente.
+   - Descriptor de archivo >&3
+   - Eliminación con la tubería printf "%s\n" "${enlaces_rotos[@]}" | xargs rm -fv >&3
 
 _________________________________________________________________________________________________
 

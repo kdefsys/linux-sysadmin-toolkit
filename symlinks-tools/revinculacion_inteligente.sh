@@ -1,68 +1,110 @@
 #!/bin/bash
 ### Nombre: revinculacion_inteligente.sh
 ### Autor: kdefsys
-### No solo limpia enlaces rotos, sino que intenta repararlos buscando archivos huerfanos con
-### nombres similares en el sistema, comportandose como una herramienta de autorrecuperación
-### Uso: ./revinculacion_inteligente.sh <directorio>
+### Descripcion: La reestructuración de directorios o migración de archivos suele romper enlaces simbolicos existentes.
+### En lugar de limitarse a borrar los enlaces dañados, este script es una herramienta de "autorrecuperacion" que intente
+### localizar archivos huerfanos con el mismo nombre dentro del sistema para reparar la vinculacion automaticamente, tambien
+### ofrece la opcion de borrarlos o simplemente ignorarlos.
+### Uso: ./revinculacion_inteligente.sh -d <directorio_objetivo> -f <ruta_destino> -h [help]
 
-if [[ "$#" -ne 1 ]]; then
-	echo -e "El script no contiene 1 argumento\nSaliendo del script..."
-	exit 1
-fi
+function help {
+	echo "El script debe ejecutarse asi: ./revinculacion_inteligente.sh -d <directorio_objetivo> -f <ruta_destino> -h"
+	echo "   -d: El directorio objetivo donde vamos a buscar los enlaces simbólicos rotos"
+	echo "   -f: La ruta destino donde vamos a guardar nuestro log de auditoria"
+	echo "   -h: Imprime esta ayuda"
+}
 
-DIRECTORIO="$1"
-FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
+###=========================================================
+###		MENU DE GETOPTS
+###=========================================================
 
-function menus {
-	local -n Lista=$1
-	local SALIDA="$2"
-	echo "======================================FLUJO DE OPERACIONES================================" &> "$SALIDA"
-	for enlace in "${Lista[@]}"; do
-		echo "Tenemos el enlace roto: $enlace"
-		read -p "Que hacemos? REPARAR(R), ELIMINAR(E), IGNORAR(I): " opcion
-		case "$opcion" in
+OPERACION="NO"
+RUTA_DESTINO="$(pwd)"
+
+while getopts :d:f:h opt; do
+	case "$opt" in
+		d)
+		 DIRECTORIO="$OPTARG"
+		 if [[ ! -d "$DIRECTORIO" ]]; then
+			DIRECTORIO="$(pwd)"
+		 fi
+		 OPERACION="SI"
+		 ;;
+		f)
+		 RUTA_DESTINO="$OPTARG"
+		 if [[ ! -d "$RUTA_DESTINO" ]]; then
+			RUTA_DESTINO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+		 fi
+		 ;;
+		h)
+		 help
+		 exit 0
+		 ;;
+		*)
+		 echo "Opcion invalida en los argumentos"
+		 exit 1
+		 ;;
+	esac
+done
+
+function menu {
+	local -n arreglo_enlaces=$1
+
+	for enlace in "${arreglo_enlaces[@]}"; do
+		read -p "Enlace: $enlace . Que desea hacer? REPARAR (R), ELIMINAR (E) o IGNORAR (I): " op
+		case "$op" in
 			R|r)
-				local archivo_destino=$(readlink "$enlace")
-				local archivo2="${archivo_destino##*/}"
-				local archivo_nuevo=$(find "/" -type f -name "*${archivo2}" 2>/dev/null | head -n 1)
-				if [[ -z "$archivo_nuevo" ]]; then
-					echo "No se puede reparar porque el archivo dejo de existir"
-				else
-					echo "El archivo al parecer o bien fue movido a otro directorio o se creo en otro"
-					if ln -sf "${archivo_nuevo}" "$enlace"; then
-						echo "$enlace           REPARADO" | tee -a "$SALIDA"
-						echo "RUTA ANTIGUA: ${archivo_destino}   RUTA NUEVA: ${archivo_nuevo}" | tee -a "$SALIDA"
-					fi
-				fi ;;
+			 local destino_enlace="$(readlink "$enlace")"
+			 local nombre_archivo="${destino_enlace##*/}"
+			 destino_nuevo="$(find / -name "$nombre_archivo" 2>/dev/null | head -n 1)"
+			 if [[ -z "$destino_nuevo" ]]; then
+			 	echo "No se encontro coincidencias con el archivo anterior, no es posible redireccionar el enlace"
+				continue
+			 fi
+			 if ln -sf "${destino_nuevo}" "$enlace" 2>/dev/null; then
+			 	echo "El enlace $enlace fue reparado y ahora apunta a esta nueva direccion $destino_nuevo" >&3
+			 else
+				echo "El enlace $enlace no pudo ser reparado correctamente"
+			 fi
+			 ;;
 			E|e)
-				if rm -v "$enlace"; then
-					echo "$enlace      ELIMINADO" | tee -a "$SALIDA"
-				fi
-				;;
+			 echo "Procedemos a eliminar el enlace roto"
+			 if rm -f "$enlace" 2>/dev/null; then
+			 	echo "El enlace $enlace fue eliminado correctamente del sistema" >&3
+			 else
+				echo "El enlace $enlace no pudo ser eliminado correctamente"
+			 fi
+			 ;;
+			I|i)
+			 echo "Ignoramos el enlace $enlace"
+			 echo "El enlace: $enlace fue ignorado" >&3
+			 ;;
 			*)
-				echo "$enlace      IGNORADO" | tee -a "$SALIDA" ;;
+			 echo "Opción inválida, no se puede procesar ninguna operacion"
+			 ;;
 		esac
 	done
 }
 
-if [[ -d "$DIRECTORIO" ]]; then
-	mapfile -t enlaces_rotos < <(find "$DIRECTORIO" -type l -not -exec test -e {} \; -print)
-	if [[ "${#enlaces_rotos[@]}" -eq 0 ]]; then
-		echo -e "No hay enlaces rotos\nSaliendo del script..."
-		exit 1
+if [[ "$OPERACION" == "SI" ]]; then
+	mapfile -t enlaces_rotos < <(find "$DIRECTORIO" -type l ! -exec test -e {} \; -print)
+	if [[ "${#enlaces_rotos[@]}" -eq 0 || -z "${enlaces_rotos[0]}" ]]; then
+		echo "No existen enlaces rotos en el directorio $DIRECTORIO"
+	else
+		FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
+		REPORTE="${RUTA_DESTINO}/auditoria_enlaces_${FECHA}.log"
+		exec 3>>"$REPORTE"
+		echo "============================AUDITORIA_ENLACES_ROTOS===============================" >&3
+		for enlace in "${enlaces_rotos[@]}"; do
+			echo "ENLACE: $enlace  - RUTA: $(readlink "$enlace")" >&3
+		done
+		echo -e "\n\n==============================PROCEDEMOS A LISTAR LA APLICACION============================" >&3
+		menu enlaces_rotos
+		echo "==================================================================================" >&3
+		exec 3>&-
 	fi
-	SALIDA="auditoria_enlaces_${FECHA}.log"
-	cantidad_enlaces_rotos="${#enlaces_rotos[@]}"
-	echo -e "LISTA DE ENLACES ROTOS CON LOS ARCHIVOS A LOS QUE APUNTA:\n\n" | tee -a "$SALIDA"
-	for enlace in "${enlaces_rotos[@]}"; do
-		archivo_destino=$(readlink "$enlace")
-		printf "%s     %s\n" "$enlace" "$archivo_destino" | tee -a "$SALIDA"
-	done
-	menus enlaces_rotos $SALIDA
 else
-	echo "El directorio ingresado como argumento no existe"
-	echo "Saliendo del script..."
-	sleep 2
+	echo "No se pudo ejecutar el script, porque no introdujo su directorio objetivo"
+	help
 	exit 1
 fi
-

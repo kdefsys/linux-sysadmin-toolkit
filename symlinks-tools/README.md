@@ -84,14 +84,14 @@ ________________________________________________________________________________
 
    Ejemplo de Ejecución:
 
-   ./revinculacion_inteligente.sh /home/usuario/proyectos
+   ./revinculacion_inteligente.sh -d directorio -f ruta_destino -h [help]
 
    Curiosidad Técnica:
    El script implementa varias técnicas de "Bash Moderno" que lo hacen destacar:
-   - Paso por Referencia (local -n Lista=$1): Utiliza namerefs para trabajar directamente con el array definido 
+   - Paso por Referencia (local -n arreglo_enlaces=$1): Utiliza namerefs para trabajar directamente con el array definido 
    fuera de la función. Esto evita la "explosión de argumentos" y permite que la función sea mucho más eficiente y
    limpia al manipular estructuras de datos complejas.
-   - Expansión Forense (${archivo_destino##*/}): En lugar de llamar al comando externo basename (lo cual crea un 
+   - Expansión Forense (${destino_enlace##*/}): En lugar de llamar al comando externo basename (lo cual crea un 
    proceso nuevo y consume recursos), utiliza la expansión de parámetros interna de Bash para obtener el nombre del 
    archivo instantáneamente.
    - Reparación Atómica con ln -sf: El uso de la bandera -f (force) es clave; permite sobrescribir el enlace simbólico 

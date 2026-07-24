@@ -310,10 +310,9 @@ ________________________________________________________________________________
 
    Ejemplo de Ejecución:
 
-   # Sintaxis: ./gestion_backups_rotacion.sh <directorio_origen> <directorio_destino> <limite_maximo>
+   Sintaxis: ./gestion_backups_rotacion.sh <directorio_origen> <directorio_destino> <limite_maximo>
 
-   # Ejemplo: Respaldar /var/www/html en /backups guardando solo las últimas 5 copias
-   ./gestion_backups_rotacion.sh /var/www/html /backups 5
+   Ejemplo: Respaldar /var/www/html en /backups guardando solo las últimas 5 copias: ./gestion_backups_rotacion.sh /var/www/html /backups 5
 
    Curiosidad Técnica:
    - Preservación del contexto con tar -C: Al ejecutar tar -czf "$ARCHIVO" -C "$ORIGEN" ., la opción -C le dice a tar que se mueva temporalmente a la carpeta origen antes de 

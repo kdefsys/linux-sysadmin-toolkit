@@ -16,6 +16,7 @@ prácticas de scripting.
 - [mensajeria.sh](#mensajeriash)
 - [monitor_recursos_umbral.sh](#monitor_recursos_umbralsh)
 - [auditoria_integridad_archivos.sh](#auditoria_integridad_archivossh)
+- [gestion_backups_rotacion.sh](#gestion_backups_rotacionsh)
 _____________________________________________________________________________
 
 ## Estructura del directorio
@@ -188,11 +189,6 @@ _____________________________________________________________________________
    directas a la pantalla de un empleado mientras este realiza una tarea en la terminal,
    facilitando la asistencia remota en servidores locales.
 
-   Ejemplo de Ejecución:
-   1. Asegúrate de tener permisos de ejecución: chmod u+x mensajería.sh
-   2. Ejecuta el script ./mensajeria.sh
-   3. Ingresa el nombre del usuario y el mensaje cuando el script lo solicite
-
    Curiosidad Técnica:
    - getent passwd: A diferencia de leer el archivo /etc/passwd directamente, este comando
    es más robusto ya que puede consultar usuarios en base de datos externas como LDAP o AD si
@@ -296,3 +292,33 @@ ________________________________________________________________________________
    interpreten como expresiones regulares). La opción -q (Quiet) suprime la impresión en pantalla y retorna inmediatamente un código de estado 0 (éxito) o 1 (fallo), optimizando al 
    máximo el rendimiento dentro de las condicionales if.
 ___________________________________________________________________________________________________________________________________________________________________________________
+
+## **gestion_backups_rotacion.sh**
+   Nivel Intermedio **Temas:** Backup y Compresión (tar), Gestión de Arreglos (mapfile), Auditoria de Archivos (stat), Tuberías Complejas (sort, head, gawk, xargs).
+
+   Descripción Técnica:
+   Este script automatiza el respaldo de un directorio específico empaquetándolo y comprimiéndolo en formato .tar.gz con una marca de tiempo única en el nombre del archivo. Su 
+   objetivo principal es garantizar copias de seguridad consistentes sin comprometer la capacidad de almacenamiento del servidor, implementando una política de retención automática 
+   (rotación) que detecta y elimina los backups más antiguos cuando el número total supera el límite máximo permitido.
+
+   Uso Típico en las empresas:
+   En entornos corporativos y servidores de producción (como servidores web Nginx/Apache o directorios de datos de aplicaciones), generar backups periódicos mediante tareas 
+   programadas (cron) puede agotar rápidamente el espacio en disco si no hay una limpieza automatizada.
+   - Prevención de incidentes por disco lleno (Out of Space), garantizando que solo se mantengan las copias necesarias (por ejemplo, las últimas 7 diarias).
+   - Respaldar directorios críticos de aplicaciones o configuraciones antes de desplegar un cambio en producción.
+   - Automatizar el mantenimiento preventivo en infraestructura Cloud o VPS de recursos limitados.
+
+   Ejemplo de Ejecución:
+
+   # Sintaxis: ./gestion_backups_rotacion.sh <directorio_origen> <directorio_destino> <limite_maximo>
+
+   # Ejemplo: Respaldar /var/www/html en /backups guardando solo las últimas 5 copias
+   ./gestion_backups_rotacion.sh /var/www/html /backups 5
+
+   Curiosidad Técnica:
+   - Preservación del contexto con tar -C: Al ejecutar tar -czf "$ARCHIVO" -C "$ORIGEN" ., la opción -C le dice a tar que se mueva temporalmente a la carpeta origen antes de 
+   empaquetar. Esto evita que el archivo .tar.gz guarde rutas absolutas molestas (como /var/www/html/file.txt) y comprima únicamente la estructura interna del directorio.
+   - Rotación quirúrgica con tuberías en Unix: La línea de limpieza: stat -c "%W|%n" "${files_backups[@]}" | sort -t "|" -k 1n,1n | head -n "$CANTIDAD_A_ELIMINAR" | gawk -F "|" 
+   '{print $2}' | xargs rm -fv
+
+____________________________________________________________________________________________________________________________________________________________________________________

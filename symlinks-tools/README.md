@@ -125,7 +125,8 @@ ________________________________________________________________________________
    El script destaca por:
     - Uso de archivos de configuración como fuente de verdad
     - Comparación de destinos con 'readlink'
-    - Recreación segura de symlinks con 'ln -s'
+    - Recreación segura de symlinks con 'ln -sf'
+    - Uso de while IFS=":" read -r enlace ruta || [[ -n "$enlace" ]];
    Este enfoque evita errores humanos y asegura consistencias en sistemas
    productivos
 

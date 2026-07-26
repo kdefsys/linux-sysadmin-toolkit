@@ -1,96 +1,131 @@
 #!/bin/bash
-###Autor: kdefsys
-###Script de deduplicacion de almacenamiento local basado en enlaces duros.
-###Recorre dos directorios, identifica de forma masiva los archivos que son exactamente
-###iguales(mismo tamaño y mismo hash criptográfico), y reemplazar los archivos duplicados
-###en el destino por enlaces duros hacia el archivo de referencia original
-###Uso: ./optimizador_almacenamiento_dedup.sh -r <dir_referencia> -d <dir_destino> -m <tamaño_min> -s
+### Nombre: optimizador_alamcenamiento_dedup.sh
+### Autor: kdefsys
+### Descripcion: En entornos con grandes volúmenes de datos (como servidores de respaldos o repositorios de activos), es habitual encontrar archivos completamente idénticos
+### duplicados en diferentes rutas. Esto desperdicia almacenamiento físico y recursos del sistema de archivos.
+### Este script de deduplicacion identifica archivos identicos entre dos directorios ( un directorio de referencia y uno de destino) y reemplaza las copias repetidas por enlaces duros
+### hacia la version original, liberando espacio en disco de forma transparente
+### Uso: ./optimizador_alamcenamiento_dedup.sh -r <directorio_de_referencia> -d <directorio_destino> -m <tamaño_minimo> -s -h [help]
 
-TAMANIO="0"
-SIMULACRO=0
-TOTAL_AHORRADO_BYTES=0
+function help {
+	echo "El script se ejecuta asi: ./optimizador_alamcenamiento_dedup.sh -r <directorio_de_referencia> -d <directorio_destino> -m <tamaño_minimo> -s <modo_simulacro> -h"
+	echo "   -r: Directorio de referencia (contiene los archivos originales), si se omite se toma el directorio actual"
+	echo "   -d: Directorio destino donde se buscara y se reemplazaran los archivos duplicados. Si no existe se cancela la ejecucion"
+	echo "   -m: Tamaño minimo, un umbral en bytes a partir del cual se consideraran los archivos para el analisis, por defecto es 0"
+	echo "   -s: Modo simulacro, un flag tipo switch sin argumentos que, si esta presente, activa el modo prueba"
+	echo "   -h: Imprime esta guia "
+}
 
-while getopts :r:d:m:s opt; do
+DIRECTORIO_ORIGEN="$(pwd)"
+DIRECTORIO_ORIG_HAY="SI"
+DIRECTORIO_DEST_HAY="NO"
+LIMITE="0"
+SIMULACION="NO"
+
+while getopts :r:d:m:sh opt; do
 	case "$opt" in
-	  r)
-	   DIRECTORIO_RE="${OPTARG:-.}"
-	   ;;
-
-	  d)
-	   DIRECTORIO_DE="${OPTARG}"
-	   if [[ ! -d "${DIRECTORIO_DE}" ]]; then
-		echo "El directorio destino no existe" ; exit 1
-	   fi
-	   ;;
-	  m)
-	   TAMANIO="${OPTARG:-0}"
-	   ;;
-	  s)
-	   SIMULACRO=1
-	   ;;
-	  *)
-	   echo "Argumento invalido"
-	   exit 1
+		r)
+		 if [[ -d "$OPTARG" ]]; then DIRECTORIO_ORIGEN="$OPTARG"; fi
+		 ;;
+		d)
+		 DIRECTORIO_DESTINO="$OPTARG"
+		 if [[ ! -d "$DIRECTORIO_DESTINO" ]]; then
+		 	echo "No existe el directorio destino, se cancela la ejecucion"
+		 	exit 1
+		 fi
+		 DIRECTORIO_DEST_HAY="SI"
+		 ;;
+		m)
+		 LIMITE="$OPTARG"
+		 ;;
+		s)
+		 SIMULACION="SI"
+		 ;;
+		h)
+		 help
+		 exit 0
+		 ;;
+		*)
+		 echo "Opcion invalida de argumento"
+		 help
+		 exit 1
+		 ;;
 	esac
 done
 
-mapfile -t archivos_re < <(find "$DIRECTORIO_RE" -type f -size +"${TAMANIO}c")
-declare -A mapa_referencia
+function filtrado_por_size {
+	local -n arreglo=$1
+	local -n arreglo_salida=$2
+	for file in "${arreglo[@]}"; do
+		local TAMAÑO="$(stat -c '%s' "$file")"
+		arreglo_salida[$TAMAÑO]="${arreglo_salida[$TAMAÑO]}"%"$file"
+	done
+}
 
-for file in "${archivos_re[@]}"; do
+AHORRADO=0
 
-	tamanio=$(stat -c "%s" "$file")
-	indice="${tamanio}"
-	mapa_referencia["$indice"]="${mapa_referencia[$indice]}%${file}"
+if [[ "$DIRECTORIO_DEST_HAY" == "SI" ]]; then
 
-done
-
-mapfile -t archivos_de < <(find "$DIRECTORIO_DE" -type f -size +"${TAMANIO}c")
-
-for file_de in "${archivos_de[@]}"; do
-
-	tamanio_de=$(stat -c "%s" "$file_de")
-	if [[ -n "${mapa_referencia[${tamanio_de}]}" ]]; then
-
-		cadena_re="${mapa_referencia[$tamanio_de]}"
-		cadena_re="${cadena_re#%}"
-		IFS='%' read -r -a opciones_re <<< "$cadena_re"
-		hash_de=$(sha256sum "$file_de" | gawk '{print $1}')
-
-		for file_re in "${opciones_re[@]}"; do
-
-			inodo_de=$(stat -c "%i" "$file_de")
-			inodo_re=$(stat -c "%i" "$file_re")
-			if [[ "$inodo_de" == "$inodo_re" ]]; then
-				continue
-			fi
-			hash_re=$(sha256sum "$file_re" | gawk '{print $1}')
-			if [[ "$hash_re" == "$hash_de" ]]; then
-				echo "Duplicado detectado"
-				echo "Destino: $file_de"
-				echo "Referencia: $file_re"
-				TOTAL_AHORRADO_BYTES=$((TOTAL_AHORRADO_BYTES + tamanio_de))
-				if (( SIMULACRO == 1 )); then
-					echo "Estado: [SIMULACRO] El archivo no ha sido modificado."
-				else
-					echo "Estado: Reemplazando por enlace duro"
-					rm "$file_de" ; ln "$file_re" "$file_de"
-				fi
-				echo "-------------------------------------------------------"
-				break
-			fi
-		done
+	if [[ "$SIMULACION" == "SI" ]]; then
+	        echo "======================================================SIMULACRO========================================"
+	else
+        	echo "===============================================EJECUCION REAL=========================================="
 	fi
-done
+	mapfile -t files_origen < <(find "$DIRECTORIO_ORIGEN" -type f -size +"${LIMITE}c")
+	mapfile -t files_destino < <(find "$DIRECTORIO_DESTINO" -type f -size +"${LIMITE}c")
+	## Filtramos por tamaño, la clave es el tamaño en bytes y el valor es una cadena con los nombres
+	## de todos los archivos que cumplen esa condicion de tamaño con un separador %
 
-TOTAL_AHORRADO_MB=$(echo "scale=2; $TOTAL_AHORRADO_BYTES / 1024 / 1024 " | bc)
+	declare -A files_por_size_origen
 
-echo -e "\n========= RESUMEN DE OPTIMIZACION ==============\n"
-if (( SIMULACRO == 1 )); then
-	echo "Modo: SIMULACRO (Dry-Run)"
-	echo "Espacio total estimado a ahorrar: $TOTAL_AHORRADO_MB MB"
-else
-	echo "Modo: EJECUCIÓN REAL"
-	echo "Espacio total real liberado: $TOTAL_AHORRADO_MB MB"
+	filtrado_por_size files_origen files_por_size_origen
+
+	for file_destino in "${files_destino[@]}"; do
+		tamaño_destino=$(stat -c "%s" "$file_destino")
+		if [[ -n "${files_por_size_origen[$tamaño_destino]}" ]]; then
+			cadena_origen="${files_por_size_origen[$tamaño_destino]}"
+			cadena_origen="${cadena_origen#%}"
+
+			## Aplicamos un read con IFS y un here string
+			IFS="%" read -r -a opciones_origen <<< "$cadena_origen"
+			hash_destino="$(sha256sum "$file_destino" | gawk '{print $1}')"
+			inodo_destino=$(stat -c "%i" "$file_destino")
+
+			for file_origen in "${opciones_origen[@]}"; do
+				inodo_origen=$(stat -c "%i" "$file_origen")
+				hash_origen="$(sha256sum "$file_origen" | gawk '{print $1}')"
+				if (( inodo_destino == inodo_origen )); then
+					echo "El archivo destino: $file_destino ya es un enlace duro del archivo original: $file_origen"
+					break
+				else
+					if [[ "$hash_destino" == "$hash_origen" ]]; then
+						AHORRADO=$(( AHORRADO + tamaño_destino))
+						if [[ "$SIMULACION" == "SI" ]]; then
+							echo "Como es un simulacro no se modifica el sistema de archivos"
+							echo "Pero sabemos que el archivo $file_destino es una copia del archivo $file_origen"
+						else
+							rm -fv "$file_destino"
+							if ln "$file_origen" "$file_destino" 2>/dev/null; then
+								echo "Se creo correctamente el enlace duro"
+								echo "El enlace duro: $file_destino -> $file_origen"
+							else
+								echo "No se pudo crear correctamente el enlace duro $file_destino"
+							fi
+						fi
+						break
+					fi
+				fi
+			done
+		fi
+	done
 fi
-echo "======================================================="
+
+## ==========================================================
+## 			REPORTE
+## ==========================================================
+
+if [[ "$SIMULACION" == "SI" ]]; then
+	echo "Si lanzamos este script en ejecucion real se estaria ahorrando $AHORRADO bytes"
+else
+	echo "Se ahorro un total de $AHORRADO bytes eliminando esos duplicados y copias de archivos"
+fi

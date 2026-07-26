@@ -154,7 +154,7 @@ _____________________________________________________________________________
    Ejemplo de Ejecución:
    chmod +x gestor_entornos.sh
 
-   ./gestor_entornos.sh -s /apps/releases -e v2.1.0 -t /var/www/html/current
+   ./gestor_entornos.sh -s /apps/releases -e v2.1.0 -t /var/www/html/current -h
 
    Curiosidad Técnica:
    - Procesamiento con getopts: Implementa un análisis de argumentos estándar de Linux, permitiendo que las opciones -s, -t y -e se pasen en cualquier orden de forma profesional.
@@ -162,6 +162,7 @@ _____________________________________________________________________________
    una carpeta con datos reales en un enlace, el script se detendrá y protegerá la integridad de los archivos.
    - Redirección de Auditoría (exec 3>>): Utiliza un descriptor de archivo personalizado para manejar el archivo de reporte. Esto permite separar los mensajes informativos de la 
    terminal de los registros permanentes de auditoría, manteniendo un flujo de salida limpio y eficiente.
+   - El uso de ln -s y ln -sf.
 ______________________________________________________________________________________________________________________________________________________________
 
 ## **optimizador_almacenamiento_dedup.sh**

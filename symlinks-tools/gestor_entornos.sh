@@ -1,73 +1,95 @@
 #!/bin/bash
 ### Nombre: gestor_entornos.sh
 ### Autor: kdefsys
-### Utiliza enlaces simbolicos para cambiar instantaneamente la configuracion activa de una aplicacion
-### (por ejemplo, un sitio web o una base de datos) entre diferentes entornos, utilizando getopts para manejar
-### los parametros
-### Uso: ./gestor_entornos.sh -s <directorio_source> -t <target> -e <entorno>
+### Descripción: En arquitecturas de software modernas, es muy común tener múltiples archivos o directorios de configuración correspondientes a distintos entornos
+### (por ejemplo: config.prod, config.dev, config.qa).Para evitar modificar el código fuente de las aplicaciones, los sistemas de despliegue emplean un enlace simbólico maestro
+### (como config.active o current_env) que apunta directamente al entorno deseado en cada momento.
+### Este script es capaz de conmutar de forma segura la configuración activa mediante el uso de argumentos en linea de comandos.
+### Uso: ./gestor_entornos.sh -s <directorio_fuente> -t <enlace simbolico objetivo> -e <entorno_objetivo> -h [help]
 
-DIRECTORIO=""
-ENTORNO=""
-ESTADO=""
-REPORTE="reporte_gestor_entorno.log"
+function help {
+	echo "Se debe de ejecutar asi: ./gestor_entornos.sh -s <directorio_fuente> -t <enlace simbolico objetivo> -e <entorno_objetvio> -h [help]"
+	echo "   -s: Directorio fuente"
+	echo "   -t: Enlace simbolico objetivo"
+	echo "   -e: Entorno objetivo"
+	echo "   -h: Imprime esta guia "
+}
 
-while getopts :s:t:e: opt; do
+### =======================================================
+###			MENU DE GETOPTS
+### =======================================================
+
+DIRECTORIO_HAY="NO"
+ENLACE_HAY="NO"
+ENTORNO_HAY="NO"
+
+while getopts :s:t:e:h opt; do
 	case "$opt" in
 		s)
-		  if [[ -d "$OPTARG" ]]; then
-			DIRECTORIO="$OPTARG"
-		  fi
-		  ;;
+		 DIRECTORIO="$OPTARG"
+		 if [[ ! -d "$DIRECTORIO" ]]; then
+		 	echo "ERROR: El directorio fuente '$DIRECTORIO' no existe."
+			exit 1
+		 fi
+		 DIRECTORIO_HAY="SI"
+		 ;;
 		t)
-		  ESTADO="Activado"
-		  ENLACE="$OPTARG"
-		  ;;
+		 ENLACE="$OPTARG"
+		 ENLACE_HAY="SI"
+		 ;;
 		e)
-		  if [[ -e "${DIRECTORIO}/${OPTARG}" ]]; then
-			ENTORNO="$OPTARG"
-		  fi
-		  ;;
+		 ENTORNO="$OPTARG"
+		 ENTORNO_HAY="SI"
+		 ;;
+		h)
+		 help
+		 exit 0
+		 ;;
 		*)
-		  echo -e "Argumento no valido\nSaliendo del script..."
-		  exit 1
+		 echo "Opcion Invalida, no existe este argumento"
+		 help
+		 exit 1
+		 ;;
 	esac
 done
 
-exec 3>>"${REPORTE}"
-
-if [[ -z "$ESTADO" ]]; then
-	echo -e "No hay opcion de accion -t\nSaliendo del Script..."
-	exec 3>&-
-	exit 1
-fi
-
-
-if [[ -z "$DIRECTORIO" || -z "$ENTORNO" ]]; then
-	echo -e "Los argumentos de directorio o de entorno esta vacio\nSaliendo del script..."
-	exec 3>&-
-	exit 1
-fi
-
-if [[ -L "$ENLACE" ]]; then
-	if ln -sf "${DIRECTORIO}/${ENTORNO}" "${ENLACE}" 2> /dev/null; then
-		echo "La modificacion del enlace simbolico con exito"
-		echo -e "EL CAMBIO FUE UN EXITO\nUSUARIO:${USER}\tHORA:$(date '+%Y-%m-%d_%H-%M-%S')\nENTORNO: ${DIRECTORIO}/${ENTORNO} CON EL ENLACE: ${ENLACE}\n" >&3
-	else
-		echo "Hubo un error en la modificacion del enlace simbolico"
+if [[ "$DIRECTORIO_HAY" == "SI" && "$ENLACE_HAY" == "SI" && "$ENTORNO_HAY" == "SI" ]]; then
+	RUTA_DESTINO="${DIRECTORIO}/$ENTORNO"
+	if [[ ! -e "$RUTA_DESTINO" ]]; then
+		echo "Error: El entorno '$ENTORNO' no existe dentro de '$DIRECTORIO'."
+		exit 1
 	fi
-elif [[ -d "$ENLACE" || -f "$ENLACE" ]]; then
-	echo "No es un enlace simbolico, asi que no procedemos a eliminar nada"
+	REPORTE="reporte_gestor_entorno.log"
+	exec 3>>"$REPORTE"
+	echo "=======================================REPORTE DE CREACION Y MODIFICACION DE ENLACES==============================" >&3
+	echo "Autor: $USER" >&3
+	echo "FECHA: $(date '+%Y-%m-%d %H-%M-%S')" >&3
+	echo "Enlace: $ENLACE 	-	RUTA: $RUTA_DESTINO" >&3
+
+	if [[ -L "$ENLACE" ]]; then
+		echo "La ruta: $ENLACE es un enlace simbolico" >&3 
+		echo "Procedemos a cambiar su destino para que apunte al entorno" >&3
+		if ln -sf "${RUTA_DESTINO}" "$ENLACE" 2>/dev/null; then
+			echo "El cambio fue realizado con exito" >&3
+			echo "Ahora el enlace: $ENLACE apunta a la ruta $RUTA_DESTINO" >&3
+		else
+			echo "El cambio del enlace: $ENLACE a la ruta $RUTA_DESTINO no se pudo realizar correctamente" >&3
+		fi
+	elif [[ -f "$ENLACE" || -d "$ENLACE" ]]; then
+		echo "El ruta: $ENLACE no es un enlace simbolico" >&3
+	else
+		echo "La ruta $ENLACE no existe" >&3
+		echo "Hay que convertirlo en enlace simbolico" >&3
+		if ln -s "$RUTA_DESTINO" "$ENLACE" 2>/dev/null; then
+			echo "Se creó correctamente el enlace" >&3
+			echo "$ENLACE apunta a la ruta $RUTA_DESTINO" >&3
+		else
+			echo "No se pudo crear correctamente el enlace $ENLACE" >&3
+		fi
+	fi
 	exec 3>&-
-	exit 1
 else
-	echo "No existe el enlace, pero vamos a crearlo"
-	if ln -s "${DIRECTORIO}/${ENTORNO}" "${ENLACE}" 2>/dev/null; then
-		echo "Creado el nuevo enlace simbolico con exito"
-		echo -e "EL PROCESO FUE UN EXITO\nUSUARIO:${USER}\nHORA:$(date '+%Y-%m-%d_%H-%M-%S')\nENTORNO: ${DIRECTORIO}/${ENTORNO} CON EL ENLACE: ${ENLACE}\n" >&3
-	else
-		echo "Hubo un error en la creacion del enlace simbolico"
-	fi
+	echo "No estan presentes los 3 argumentos obligatorios"
+	help
+	exit 1
 fi
-
-echo "Proceso Finalizado, Reporte en ${REPORTE}"
-exec 3>&-

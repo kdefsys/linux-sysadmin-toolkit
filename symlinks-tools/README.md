@@ -192,6 +192,7 @@ ________________________________________________________________________________
    Ejemplo de Ejecución:
    1. Realizar una simulación (Dry-Run) para calcular el ahorro de espacio potencial sin alterar el disco: ./optimizador_almacenamiento_dedup.sh -r /backups/lunes -d /backups/martes -m 1048576 -s
    2. Ejecutar la deduplicación real sobre el directorio de destino: ./optimizador_almacenamiento_dedup.sh -r /backups/lunes -d /backups/martes -m 1048576
+   3. La guia: ./optimizador_almacenamiento_dedup.sh -h
 
    Curiosidad Técnica:
    El script destaca por resolver tres grandes desafíos arquitectónicos en Bash:
@@ -199,7 +200,7 @@ ________________________________________________________________________________
    provocaría una degradación extrema del rendimiento. El uso del arreglo asociativo mapa_referencia["$indice"] indexado por tamaño transforma la búsqueda inicial en una operación 
    de tiempo constante $O(1)$, aislando el cálculo de firmas SHA-256 estrictamente a los archivos sospechosos de ser idénticos.
    - Aislamiento de Colisiones con IFS='%': Al concatenar las rutas de archivos que comparten tamaños dentro de una sola cadena de texto separada por %, el script evita desbordar
-   la memoria. Posteriormente, la técnica de reasignación local del Separador Interno de Campo (IFS='%' read -r -a opciones_re <<< "$cadena_re") deserializa la cadena en un array 
+   la memoria. Posteriormente, la técnica de reasignación local del Separador Interno de Campo (IFS='%' read -r -a opciones_origen <<< "$cadena_origen") deserializa la cadena en un array 
    dinámico al vuelo, permitiendo iterar de forma nativa sobre un número indeterminado de colisiones sin requerir subshells externos.
    - Aritmética de Punto Flotante Nativa Externa: Bash no soporta operaciones aritméticas con decimales. Para poder entregar un reporte métrico profesional y legible para la toma 
    de decisiones, el script delega el cálculo final al procesador matemático bc a través de un pipeline, configurando la precisión mediante scale=2 para transformar bytes crudos a 

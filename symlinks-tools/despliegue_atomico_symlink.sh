@@ -125,11 +125,12 @@ if [[ "$ROLLBACK" == "SI" ]]; then
 			VERSION_QUE_VA_PARA_ANTERIOR="$(readlink -f "$ENLACE")"
 			if ln -snf "$VERSION_ANTERIOR" "$ENLACE_TMP" && mv -Tf "$ENLACE_TMP" "$ENLACE" 2>/dev/null; then
 				echo "[EXITO] El enlace $ENLACE volvio a apuntar a la version anterior que apuntaba $VERSION_ANTERIOR"
-				echo "$VERSION_QUE_VA_PARA_ANTERIOR" >> "$HISTORIAL"
 				HUBO_ROOLBACK="SI"
+				sed -i "$(( LINEAS - CONTEO + 1 )),\$d" "$HISTORIAL"
 				break
 			else
 				echo "[ERROR] El enlace $ENLACE no pudo volver a apuntar a la version anterior que apuntaba anteriormente"
+				break
 			fi
 		done
 		if [[ "$HUBO_ROOLBACK" == "NO" ]]; then

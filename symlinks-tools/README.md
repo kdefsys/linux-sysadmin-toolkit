@@ -13,6 +13,7 @@ mantenimiento de servidores.
 - [verificar_y_reconstruir_symlinks.sh](#verificar_y_reconstruir_symlinkssh)
 - [gestor_entornos.sh](#gestor_entornossh)
 - [optimizador_almacenamiento_dedup.sh](#optimizador_almacenamiento_dedupsh)
+- [despliegue_atomico_symlink.sh](#despliegue_atomico_symlink.sh)
 ________________________________________________________________________________________________
 
 ## **auditar_symlinks_rotos.sh**
@@ -205,6 +206,53 @@ ________________________________________________________________________________
    - Aritmética de Punto Flotante Nativa Externa: Bash no soporta operaciones aritméticas con decimales. Para poder entregar un reporte métrico profesional y legible para la toma 
    de decisiones, el script delega el cálculo final al procesador matemático bc a través de un pipeline, configurando la precisión mediante scale=2 para transformar bytes crudos a 
    Megabytes formateados con precisión decimal.
+
+_____________________________________________________________________________________________________________________________________________________________________________________
+
+## **despliegue_atomico_symlink.sh**
+   Nivel Avanzado **Temas:** Bash Scripting, DevOps, SysAdmin, Despliegues Zero-Downtime, Symlinks, Manipulacion de Archivos, Gestion de versiones, Automatizacion
+
+   Descripción Técnica
+   Este script automatiza el proceso de despliegues de aplicaciones en servidores de producción mediante enlaces simbólicos y operaciones atómicas a nivel de Kernel. Permite conmutar
+   la versión activa de una aplicación de forma instantánea sin interrumpir las peticiones de los usuarios ni provocar caídas de servicio (zero downtime).
+   Entre sus funcionalidades clave, el script:
+   1. Valida la estructura de directorios y el enlace activo preexistente (current).
+   2. Conmuta atómicamente el enlace simbólico hacia una nueva versión preparada (-n).
+   3. Registra el historial de versiones activas en una estructura tipo pila (LIFO).
+   4. Ofrece un mecanismo de rollback resiliente (-b), capaz de restaurar la versión estable anterior omitiendo automáticamente registros de carpetas purgadas o inexistentes.
+   5. Controla el crecimiento en disco purgando automáticamente las versiones más antiguas en función de su fecha de modificación (-k).
+
+   Uso Típico en las empresas
+   En entornos corporativos donde aplicaciones web, APIs o microservicios sirven miles de peticiones por segundo (usando Nginx, Apache, Node.js, etc.), actualizar archivos
+   sobrescribiéndolos directamente en la carpeta activa provoca errores HTTP 500/502, lecturas incompletas de código o tiempos de parada no planificados.
+   Las empresas utilizan este script dentro de sus pipelines de integración y despliegue continuo (CI/CD) para:
+   - Eliminar el Downtime: La conmutación mediante enlace simbólico es imperceptible para el servidor web.
+   - Manejo de Emergencias (Rollbacks Inmediatos): Si una nueva versión introdujo un bug crítico en producción, el equipo de Operaciones/SRE puede revertir a la versión previa en
+   milisegundos mediante ./despliegue_atomico_symlink.sh -b.
+   - Mantenimiento Automatizado del Servidor: Evita que el almacenamiento del servidor se llene manteniendo únicamente las últimas $N$ versiones activas requeridas por la política
+   de infraestructura.
+
+   Ejemplo de Ejecución:
+
+   1. Desplegar una nueva versión (v1.2.0) y limitar a mantener 3 versiones antiguas: ./despliegue_atomico_symlink.sh -p /var/www/mi_aplicacion -n v1.2.0 -k 3
+   2. Ejecutar un Rollback inmediato a la versión anterior: ./despliegue_atomico_symlink.sh -p /var/www/mi_aplicacion -b
+   3. Consultar la ayuda y flags disponibles: ./despliegue_atomico_symlink.sh -h
+
+   Curiosidad Técnica:
+   - Conmutación Atómica con mv -Tf:
+   Para lograr la atomicidad real a nivel del sistema de archivos, el script no sobrescribe el enlace activo directo. Primero crea un enlace temporal 
+   (ln -snf "$NOMBRE_COMPLETO" "$ENLACE_TMP") y luego ejecuta mv -Tf "$ENLACE_TMP" "$ENLACE". En Linux, la llamada al sistema rename() detrás de mv reemplaza el enlace de forma
+   indivisible a nivel de inodo: no existe ningún milisegundo donde el enlace current quede roto o no apunte a nada.
+   - Filtrado Exclusivo en la Purga con find ! -path y stat:
+   Para evitar borrar la versión que está sirviendo tráfico en ese instante, el script consulta el destino real del symlink mediante readlink y usa find excluyendo esa ruta exacta:
+   find "$DIRECTORIO/releases/" -maxdepth 1 -mindepth 1 -type d ! -path "$DESTINO_ACTUAL" -exec stat -c "%Y %n" {} \;
+   stat -c "%Y %n" extrae la fecha de modificación en segundos Unix junto al nombre de la carpeta, permitiendo que sort -n ordene cronológicamente con precisión exacta para
+   eliminar solo los directorios más viejos.
+   - Gestión de Historial como Pila en Archivos de Texto (sed -i):
+   Al hacer rollback, el script lee la última versión del historial con tail -n y head -n. Si la conmutación tiene éxito, ejecuta:
+   sed -i "$(( LINEAS - CONTEO + 1 )),\$d" "$HISTORIAL"
+   Esta instrucción de sed elimina en caliente las líneas desde la versión consumida hasta el final del archivo. Esto permite realizar múltiples rollbacks consecutivos (v3 ➔ v2 ➔ v1)
+   de forma matemáticamente exacta y limpia los registros de versiones que hayan sido eliminadas físicamente del disco.
 
 _____________________________________________________________________________________________________________________________________________________________________________________
 

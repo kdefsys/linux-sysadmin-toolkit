@@ -13,7 +13,7 @@ mantenimiento de servidores.
 - [verificar_y_reconstruir_symlinks.sh](#verificar_y_reconstruir_symlinkssh)
 - [gestor_entornos.sh](#gestor_entornossh)
 - [optimizador_almacenamiento_dedup.sh](#optimizador_almacenamiento_dedupsh)
-- [despliegue_atomico_symlink.sh](#despliegue_atomico_symlink.sh)
+- [despliegue_atomico_symlink.sh](#despliegue_atomico_symlinksh)
 ________________________________________________________________________________________________
 
 ## **auditar_symlinks_rotos.sh**

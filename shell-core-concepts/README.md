@@ -44,13 +44,13 @@ _____________________________________________________________________________
    previo a investigaciones más profundas o como tarea programada (cron) 
 
    Curiosidad Técnica:
-   - 'stat -c '%n|%s|%y|%Y' para obtener múltiples atributos del archivo en una sola
+   - 'stat -c '%s|%y|%n' para obtener múltiples atributos del archivo en una sola
    llamada
-   - 'date +%s' para trabajar con timestamps Unix
-   - 'gawk' para comprimir los atributos con un OFS adecuado
+   - date para trabajar con timestamps Unix
+   - 'gawk' para comprimir los atributos con un OFS adecuado usando gawk -F "|" 'BEGIN{OFS="\t"}{print $1, $2, $3}'
 
    Ejemplo de Ejecución:
-   ./auditar_archivos_criticos.sh directorio
+   ./auditar_archivos_criticos.sh -d <directorio> [-h]
 
 _____________________________________________________________________________
 

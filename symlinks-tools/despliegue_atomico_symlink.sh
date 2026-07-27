@@ -23,7 +23,6 @@ OPERACION="NO"
 ROLLBACK="NO"
 LIMITE=3
 ELIMINAR="NO"
-HISTORIAL="${DIRECTORIO}/releases/archivo_historial.txt"
 
 while getopts :p:n:bk:h opt; do
 	case "$opt" in
@@ -71,6 +70,7 @@ fi
 
 ESTRUCTURA_HAY="SI"
 
+HISTORIAL="${DIRECTORIO}/releases/archivo_historial.txt"
 
 if [[ "$OPERACION" == "SI" && "$ESTRUCTURA_HAY" == "SI" ]]; then
 	NOMBRE_COMPLETO="${DIRECTORIO}/releases/$NOMBRE"
@@ -122,7 +122,6 @@ if [[ "$ROLLBACK" == "SI" ]]; then
 				(( ++CONTEO ))
 				continue
 			fi
-			VERSION_QUE_VA_PARA_ANTERIOR="$(readlink -f "$ENLACE")"
 			if ln -snf "$VERSION_ANTERIOR" "$ENLACE_TMP" && mv -Tf "$ENLACE_TMP" "$ENLACE" 2>/dev/null; then
 				echo "[EXITO] El enlace $ENLACE volvio a apuntar a la version anterior que apuntaba $VERSION_ANTERIOR"
 				HUBO_ROOLBACK="SI"

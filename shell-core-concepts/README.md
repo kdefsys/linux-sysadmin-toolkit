@@ -131,7 +131,7 @@ _____________________________________________________________________________
    error
 
    Curiosidad Técnica:
-   Un punto interesante del script es el uso de 'du -hcb' junto con 'xargs', que permite
+   Un punto interesante del script es el uso de 'du -hc' junto con 'xargs' y con 'gawk', que permite
    calcular el espacio real total ocupado por multiples archivos de forma eficiente
    Además, el flujo basado en tuberias evita almacenar grandes volúmenes de datos en
    memoria y refleja una mentalidad de procesamiento por streams, muy comun en scripts

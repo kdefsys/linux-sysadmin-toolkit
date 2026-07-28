@@ -8,7 +8,7 @@ shell bash, de la línea de comandos y de scripting.
 # Contenido
 
 - [auditar_archivos_criticos.sh](#auditar_archivos_criticossh)
-- [analizar_logs_servicios.sh](#analizar_logs_serviciossh)
+- [analizar_patron_logs_servicios.sh](#analizar_patron_logs_serviciossh)
 - [limpieza_selectiva_archivos.sh](#limpieza_selectiva_archivossh)
 - [auditoria_avanzada.sh](#auditoria_avanzadash)
 - [log_rote.sh](#log_rotesh)
@@ -54,7 +54,7 @@ _____________________________________________________________________________
 
 _____________________________________________________________________________
 
-## **analizar_logs_servicios.sh**
+## **analizar_patron_logs_servicios.sh**
    Nivel Avanzado **Temas:** find, grep, tuberias,
    filtrado de logs, patrones de búsqueda, ordenamiento
 

@@ -167,7 +167,12 @@ _____________________________________________________________________________
    - Qué usuarios están generando más consumo
    - Qué servicios están causando el crecimiento
 
-_____________________________________________________________________________
+   Curiosidad Técnica:
+   - el uso de mapfile -t files < <(find "$DIRECTORIO" -type f -size +"$TAMANIO"M -mtime -"$DIAS" -exec stat -c "%s|%b|%y|%u|%n" {} \;) 
+   - ESPACIO_TOTAL=$(printf "%s\n" "${files[@]}" | cut -d "|" -f 5 | tr '\n' '\0' | xargs -0 du -hc | tail -n 1 | gawk '{print $1}') 
+   - ARCHIVO_MAYOR="$(printf "%s\n" "${files[@]}" | sort -t "|" -k 1nr,1nr | head -n 1 | gawk -F "|" '{print $5}')" 
+
+_________________________________________________________________________________________________________________________________________
 
 ## **log_rote.sh**
    Nivel Intermedio-Avanzado **Temas:** mapfile, file Descriptors, Globbing, Compresion (gzip)

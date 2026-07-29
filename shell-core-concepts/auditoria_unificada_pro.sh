@@ -1,103 +1,158 @@
 #!/bin/bash
-###Nombre: auditoria_unificada_pro.sh
-###Autor: kdefsys
-###Centraliza la busqueda, el calculo de espacio y la pre-seleccion de archivos criticos o basura
-###utilizando estrictamente getopts para procesar argumentos
-###Uso: ./auditoria_unificada_pro.sh -d <directorio> -p <patron> -m <dias> -s <tamanio> -e
+### Nombre: auditoria_unificada_pro.sh
+### Autor: kdefsys
+### Descripcion: Este script audita directorios del sistema en busca de archivos de registro que contengan patrones especificos (como errores o alertas).
+### Adicionalmente, el script permite filtrar los hallazgos por antiguedad y tamaño, y ofrece un modo opcional para purgar de forma segura archivos temporales o de respaldo
+### antiguos que coindicen con los criterios.
+### Uso: ./auditoria_unificada_pro.sh -d <directorio> [-p <patron>] [-m <dias>] [-s <tamaño_MB>] [-e] [-h]
 
-directorio_hay=""
+function help {
+	echo "El script se debe de ejecutar asi: ./auditoria_unificada_pro.sh -d <directorio> [-p <patron>] [-m <dias>] [-s <tamaño_MB>] [-e] [-h]"
+	echo "   -d : Ruta absoluta o relativa del directori a auditar. Si no se introduce la bandera se asume que es el directorio actual"
+	echo "   -p : Expresion o palabra a buscar dentro del contenido de los archivos. Si no se especifica, debe usar por defecto el patron error"
+	echo "   -m : Antiguedad maxima en dias (archivos modificados en los ultimos N dias). Debe validarse que sea un entero positivo"
+	echo "   -s : Tamaño minimo del archivo en Megabytes. Debe validarse que sea un entero positivo"
+	echo "   -e : Activa el modo de eliminacion segura."
+	echo "   -h : Imprime esta guia"
+}
+
+DIRECTORIO="$(pwd)"
 PATRON="error"
-dias_hay=""
-tamanio_hay=""
-interaccion=""
-FECHA=$(date +"%Y:%m:%d_%H:%M:%S")
-SALIDA="reporte_unificado_${FECHA}.log"
+DIAS=""
+TAMANIO=""
+ELIMINACION=0
 
-while getopts :d:p:m:s:e opt; do
+while getopts :d:p:m:s:eh opt; do
 	case "$opt" in
 		d)
-		  DIRECTORIO="${OPTARG}"
-		  if [[ -d "$DIRECTORIO" ]]; then
-			directorio_hay="si"
-		  fi
-		  ;;
+		 DIRECTORIO="$OPTARG"
+		 if [[ ! -d "$DIRECTORIO" ]]; then
+		 	echo "El directorio ingrsado no existe. Saliendo del script." >&2
+			exit 1
+		 fi
+		 ;;
 		p)
-		  PATRON="${OPTARG}"
-		  ;;
+		 PATRON="$OPTARG"
+		 ;;
 		m)
-		  dias_hay="si"
-		  DIAS="${OPTARG}"
-		  ;;
+		 DIAS="$OPTARG"
+		 if ! [[ "$DIAS" =~ ^[0-9]+$ ]]; then
+			echo "El numero de dias ingresado no es entero. Saliendo del script." >&2
+			exit 1
+		 fi
+		 ;;
 		s)
-		  tamanio_hay="si"
-		  TAMANIO="$OPTARG"
-		  ;;
+		 TAMANIO="$OPTARG"
+		 if ! [[ "$TAMANIO" =~ ^[0-9]+$ ]];then
+			echo "El tamaño ingresado no es entero. Saliendo del script." >&2
+			exit 1
+		 fi
+		 ;;
 		e)
-		  interaccion="si"
-		  ;;
+		 ELIMINACION=1
+		 ;;
+		h)
+		 help
+		 exit 0
+		 ;;
 		*)
-		  echo -e "Argumento no valido\n"
-		  exit 1
+		 echo "Opcion ingresada invalida" >&2
+		 help
+		 exit 1
+		 ;;
 	esac
 done
 
-function recopilacion {
+FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
+REPORTE="reporte_unificado_${FECHA}.log"
 
-	local directorio=$1
-	local variable=$2
-	local patron=$3
-
-	if [[ "$variable" -eq 1 ]]; then
-		find "$directorio" -type f -mtime -"$DIAS" -exec grep -Hic "$patron" {} + | gawk -F ':' '$2!=0{print $1}'
-	elif [[ "$variable" -eq 2 ]]; then
-		find "$directorio" -type f -size +"${TAMANIO}M" -exec grep -Hic "$patron" {} + | gawk -F ":" '$2!=0{print $1}'
-	else
-		find "$directorio" -type f -size +"${TAMANIO}M" -mtime -"$DIAS" -exec grep -Hic "$patron" {} + | gawk -F ":" '$2!=0{print $1}'
-	fi
-
-}
-
-if [[ -n "$directorio_hay" ]]; then
-	exec 3>>"$SALIDA"
-
-	if [[ -n "$DIAS" ]]; then
-		if [[ -n "$TAMANIO" ]]; then
-			mapfile -t archivos_log < <(recopilacion "$DIRECTORIO" 3 "$PATRON")
-		else
-			mapfile -t archivos_log < <(recopilacion "$DIRECTORIO" 1 "$PATRON")
-		fi
-	else
-		if [[ -n "$TAMANIO" ]]; then
-			mapfile -t archivos_log < <(recopilacion "$DIRECTORIO" 2 "$PATRON")
-		else
-			mapfile -t archivos_log < <(find "$DIRECTORIO" -type f -exec grep -Hic "$PATRON" {} + | gawk -F ":" '$2!=0{print $1}')
-		fi
-	fi
-
-	echo -e "\n\n=========REPORTE===========\n\n" >&3
-	echo -e "Para el directorio ${DIRECTORIO} hemos tenido los siguientes archivos cuyo contenido se encuentra el patron: ${PATRON}\n\n" >&3
-	if [[ "${#archivos_log[@]}" -ne 0 ]]; then
-		printf "%s\n" "${archivos_log[@]}" >&3
-		if [[ -n "$interaccion" ]]; then
-			echo -e "\n\nModo de eliminacion segura activado\n" >&3
-			echo -e "Procedemos a eliminar los archivos con terminaciones: .bak, .tmp, .old\n\n" >&3
-			for archivo in "${archivos_log[@]}"; do
-				if [[ "$archivo" =~ \.(bak|tmp|old)$ ]]; then
-					rm -fv "$archivo" >&3
-				fi
-			done
-
-		else
-			echo -e "\nFinal del reporte" >&3
-		fi
-	else
-		echo "No hay ningun archivo con esas caracteristicas" >&3
-	fi
-else
-	echo "No introdujo ningun directorio y era argumento obligatorio"
-	echo "SALIENDO DEL SCRIPT..."
-	exec 3>&-
-	exit 1
+if [[ -f "$REPORTE" ]]; then
+	rm -f "$REPORTE"
 fi
 
+function recopilacion {
+	local direc="$1"
+	local variable=$2
+	local patron="$3"
+
+	case "$variable" in
+		1)
+		 find "$direc" -type f -size +"${TAMANIO}M" -exec grep -l "$patron" {} + 2>/dev/null
+		 ;;
+		2)
+		 find "$direc" -type f -mtime -"$DIAS" -exec grep -l "$patron" {} + 2>/dev/null
+		 ;;
+		3)
+		 find "$direc" -type f -mtime -"$DIAS" -size +"${TAMANIO}M" -exec grep -l "$patron" {} + 2>/dev/null
+		 ;;
+		4)
+		 find "$direc" -type f -exec grep -l "$patron" {} + 2>/dev/null
+		 ;;
+		*)
+		 ;;
+ 	esac
+}
+
+
+exec 3>>"$REPORTE"
+
+echo "=============================================== REPORTE UNIFICADO ============================================================="  >&3
+echo "DIRECTORIO: $DIRECTORIO" >&3
+echo "FECHA: $FECHA" >&3
+echo "PATRON: $PATRON" >&3
+
+function proceso {
+        local -n arreglo=$1
+        local CANTIDAD="${#arreglo[@]}"
+        if (( CANTIDAD == 0 )); then
+                echo "No hay archivos que cumplan con esas caracteristicas" >&3
+        else
+                echo "Si se encontraron archivos con esas caracterisitcas. Procedemos a listarlos" >&3
+		printf "%s\n" "${arreglo[@]}" >&3
+		if (( ELIMINACION == 1 )); then
+			echo "Se selecciono la bandera -e: Eliminacion segura de archivos .bak, .tmp y .old"
+			echo "===========================================================================" >&3
+			echo "Eliminacion por bandera segura -e " >&3
+			echo "===========================================================================" >&3
+			for file in "${arreglo[@]}"; do
+				if ! [[ "$file" =~ .*/.*(\.bak|\.tmp|\.old)$ ]]; then continue; fi
+				if rm -f "$file" 2>/dev/null; then
+					echo "El archivo: $file fue eliminado con exito" >&3
+				else
+					echo "El archivo: $file no fue eliminado con exito" >&3
+				fi
+			done
+		fi
+        fi
+	echo "=================================================================================================" >&3
+}
+
+
+if [[ -z "$DIAS" && -n "$TAMANIO" ]]; then
+
+	echo "TAMANIO: $TAMANIO" >&3
+	mapfile -t files < <(recopilacion "$DIRECTORIO" 1 "$PATRON")
+	proceso files
+
+elif [[ -n "$DIAS" && -z "$TAMANIO" ]]; then
+
+	echo "DIAS: $DIAS" >&3
+	mapfile -t files < <(recopilacion "$DIRECTORIO" 2 "$PATRON")
+	proceso files
+
+elif [[ -n "$DIAS" && -n "$TAMANIO" ]]; then
+
+	echo "DIAS: $DIAS" >&3
+	echo "TAMANIO: $TAMANIO" >&3
+	mapfile -t files < <(recopilacion "$DIRECTORIO" 3 "$PATRON")
+	proceso files
+
+else
+
+	mapfile -t files < <(recopilacion "$DIRECTORIO" 4 "$PATRON")
+	proceso files
+
+fi
+
+echo "auditoria_unificada_pro concluida con exito. Ver reporte en $REPORTE"
 exec 3>&-

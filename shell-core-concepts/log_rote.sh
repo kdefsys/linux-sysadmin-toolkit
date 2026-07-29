@@ -1,82 +1,112 @@
 #!/bin/bash
 ### Nombre: log_rote.sh
 ### Autor: kdefsys
-### Tienes un servidor de aplicaciones que genera archivos de log constantemente (.log).
-### Si estos archivos se quedan ahí, crecen indefinidamente. Tu misión es crear un script que rote
-### los logs antiguos: que los identifique, los comprima para ahorrar espacio y mueva los comprimidos
-### a una carpeta de histórico, dejando solo los más recientes en la carpeta principal.
-### Uso: ./log_rote.sh <directorio_logs> <limite_dias>
+### Descripcion: Los servidores web y de aplicaciones generan archivos de traza (.log) a un ritmo acelerado. Si no se realiza un mantenimiento adecuado, estos archivos consumen la
+### capacidad del almacenamiento principal, degradando el rendimiento general del sistema. Para optimizar el espacio sin perder información histórica para auditorías, el equipo de
+### operaciones requiere un script automatizado que realice la rotación, compresión y archivado en histórico de los registros antiguos, manteniendo limpio el directorio activo.
+### Uso: ./log_rote.sh -d <directorio> -m <dias> [-h]
 
-if [[ "$#" -ne 2 ]]; then
-	echo -e "El script no tiene dos argumentos\nSaliendo del script"
+function help {
+	echo "El script se debe ejecutar asi: ./log_rote.sh -d <directorio> -m <dias> [-h]"
+	echo "   -d : La ruta del directorio objetivo donde residen los logs activos. Si no se introduce esta bandera, se asume el directorio actual"
+	echo "   -m : La antiguedad minima en dias para rotas los archivos"
+	echo "   -h : Imprime esta guia"
+}
+
+DIRECTORIO="$(pwd)"
+DIAS=""
+
+while getopts :d:m:h opt; do
+	case "$opt" in
+		d)
+		 DIRECTORIO="$OPTARG"
+		 if [[ ! -d "$DIRECTORIO" ]]; then echo "El directorio ingresado no existe. Saliendo del script" >&2; exit 1; fi
+		 ;;
+		m)
+		 DIAS="$OPTARG"
+		 ;;
+		h)
+		 help
+		 exit 0
+		 ;;
+		*)
+		 echo "Opcion ingresada invalida" >&2
+		 help
+		 exit 1
+		 ;;
+	esac
+done
+
+if [[ -z "$DIAS" ]]; then
+	echo "No se introdujo el argumento obligatorio (-m <dias>)" >&2
+	help
 	exit 1
 fi
 
-DIRECTORIO="$1"
-DIAS="$2"
+if ! [[ "$DIAS" =~ ^[0-9]+$ ]]; then
+	echo "Error: El argumento -m debe ser un número entero positivo." >&2
+	exit 1
+fi
+
 FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
 REPORTE="rotacion_ejecucion.log"
 
-if [[ -d "$DIRECTORIO" ]]; then
+echo "===================================REPORTE DE ROTACION DE LOGS A COMPRIMIDOS=============================================================" > "$REPORTE"
+echo "DIRECTORIO $DIRECTORIO" >> "$REPORTE"
+echo "FECHA: $FECHA" >> "$REPORTE"
+echo "LISTA DE ARCHIVOS ENCONTRADOS QUE SEAN *access*.log o *error*.log" >> "$REPORTE"
 
-	exec 3>>"$REPORTE"
+mapfile -t files < <(find "$DIRECTORIO" -regextype posix-extended -regex ".*/.*(access|error).*\.log$" -mtime +"$DIAS")
+CANTIDAD="${#files[@]}"
 
-	mapfile -t archivos_logs < <(find "$DIRECTORIO" -type f \( -name "*access*.log" -o -name "*error*.log" \) \
-		-mtime +"$DIAS" -print)
-	if [[ "${#archivos_logs[@]}" -eq 0 ]]; then
-		echo -e "No existen archivos con esas caracteristicas\nSaliendo del script..." >&3
-		exit 1
-	else
-		SALIDA="archive_[${FECHA}]"
-		DIRECTORIO_NUEVO="${DIRECTORIO}/${SALIDA}"
+if (( CANTIDAD == 0 )); then
+	echo "No hay archivos dentro del directorio $DIRECTORIO que cumplan estas caracteristicas" >> "$REPORTE"
+	exit 0
+fi
+printf "%s\n" "${files[@]}" >> "$REPORTE"
+echo -e "\nLa lista encontrada fue: \n"
+printf "%s\n" "${files[@]}"
 
-		echo "Lista de archivos encontrados" 
-		printf "%s\n" "${archivos_logs[@]}"
-		read -p "Desea proceder con la rotacion de estos archivos?(s/n):" op
+read -p "Desea pasar a la operacion (s|n): " op
+case "$op" in
+	s|S)
+		DIRECTORIO_SALIDA="${DIRECTORIO}/archive_${FECHA}"
+	        if [[ ! -d "$DIRECTORIO_SALIDA" ]]; then
+			mkdir -p "$DIRECTORIO_SALIDA"
+			echo "Se creo correctamente la carpeta historica $DIRECTORIO_SALIDA" >> "$REPORTE"
+		fi
+		ESPACIO_ANTES="$(du -hc "$DIRECTORIO" | tail -n 1 | gawk '{print $1}')"
 
-		case "$op" in
-			s|S)
-			  echo "Procedemos entonces"
-			  ;;
-			*)
-			  echo -e "Se cancelo el proceso\nSaliendo del script"
-			  exit 1
-			  ;;
-		esac
+		printf "%s\0" "${files[@]}" | xargs -0 gzip 2>/dev/null
 
-		mkdir "$DIRECTORIO_NUEVO"
-
-		TAMANIO_ANTES=$(du -hcb "${DIRECTORIO}" | tail -n 1)
-
-		echo "Creado correctamente el directorio '${DIRECTORIO_NUEVO}'" >&3
-		echo "Ahora comprimimos los archivos" >&3
-		printf "%s\0" "${archivos_logs[@]}" | xargs -0 gzip >&3
-
-		mv "${DIRECTORIO}"/*.gz "${DIRECTORIO_NUEVO}"
-
-		TAMANIO_AHORA=$(du -hcb "${DIRECTORIO}" | tail -n 1)
-
-		echo "Movimos correctamente los archivos .gz a ese nuevo directorio" >&3
-
-		vacio_o_no=$(ls -l "${DIRECTORIO}"/*access*.log "${DIRECTORIO}"/*error*.log 2>& /dev/null)
-
-		if [[ -z "$vacio_o_no" ]]; then
-			echo "Los logs seleccionados fueron eliminados correctamente al comprimirlos" >&3
-		else
-			echo "Los logs seleccionados no fueron eliminados correctamente al comprimirlos" >&3
-			echo "Saliendo del script, revisar eso porfavor" >&3
-			exit 1
+		archivos_pendientes=0
+		for file in "${files[@]}"; do
+			if [[ -f "$file" ]]; then
+				((archivos_pendientes++))
+			fi
+		done
+		if (( archivos_pendientes > 0 )); then
+			echo "Error: Al menos $archivos_pendientes archivos no se eliminaron al comprimirse." >&2
+	    		exit 1
 		fi
 
-		echo -e "\n\n===============================ESTADISTICAS==============================\n\n" >&3
-		echo -e "ARCHIVOS COMPRIMIDOS: ${#archivos_logs[@]}\n\n" >&3
-		echo -e "Peso antes de comprimir: ${TAMANIO_ANTES}\n\nPeso despues de comprimir: ${TAMANIO_AHORA}\n\n" >&3
-		echo -e "Los archivos que fueron movidos fueron\n\n" >&3
-		printf "%s\n" "${archivos_logs[@]}" >&3
-	fi
-else
-	echo -e "El directorio ingresado como primer argumento no existe\nSaliendo del script..."
-	exit 1
-fi
+		echo "CANTIDAD DE ARCHIVOS COMPRIMIDOS: $CANTIDAD" >> "$REPORTE"
+		echo "Compresion terminada"
 
+		for file in "${files[@]}"; do
+			if [[ -f "${file}.gz" ]]; then
+				mv "${file}.gz" "$DIRECTORIO_SALIDA/" 2>/dev/null
+			fi
+		done
+		ESPACIO_AHORA="$(du -hc "$DIRECTORIO" | tail -n 1 | gawk '{print $1}')"
 
+		echo "Compresion terminada. Los archivos comprimidos fueron enviados al directorio: $DIRECTORIO_SALIDA correctamente" >> "$REPORTE"
+		echo -e "\n\n======================================================================\n" >> "$REPORTE"
+		echo "Espacio ocupado antes de la compresion: $ESPACIO_ANTES" >> "$REPORTE"
+		echo "Espacio ocupado despues de la compresion: $ESPACIO_AHORA" >> "$REPORTE"
+
+		;;
+	*)
+		echo "Se cancelo la operacion"
+		;;
+esac

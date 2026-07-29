@@ -246,13 +246,12 @@ ________________________________________________________________________________
 
    Curiosidad Técnica:
    La arquitectura interna de este script destaca por tres implementaciones complejas que garantizan rendimiento y orden en producción:
-   - **`find ... -exec grep -Hic ... {} + | gawk -F ':' '$2!=0{print $1}'`**: En lugar de ejecutar una instancia de `grep` por cada archivo encontrado (lo cual ralentizaría 
-   drásticamente el servidor), la sintaxis `{}+` agrupa masivamente miles de rutas y las procesa en bloques mínimos. Luego, `grep -Hic` devuelve la ruta junto al recuento de 
-   coincidencias separado por dos puntos (ej. `/ruta/archivo:0`). Aquí es donde entra la genialidad de `gawk`: filtra al vuelo las líneas evaluando la segunda columna (`$2!=0`), 
-   descartando los archivos limpios sin coincidencias y extrayendo únicamente las rutas válidas (`print $1`) de forma extremadamente rápida.
+   - **`find ... -exec grep -l ... {} + ` **: En lugar de ejecutar una instancia de `grep` por cada archivo encontrado (lo cual ralentizaría 
+   drásticamente el servidor), la sintaxis `{}+` agrupa masivamente miles de rutas y las procesa en bloques mínimos. Luego, `grep -l` devuelve la ruta
    - **`mapfile -t archivos_log < <(recopilacion ...)`**: Esta estructura redirige la salida procesada de la función directamente a la memoria de Bash. Evita crear archivos 
    temporales en el disco y previene el bug común de los bucles `while read`, manteniendo el arreglo perfectamente segmentado incluso si hay nombres de archivos con espacios en blanco.
-   - **`exec 3>>"$SALIDA"`**: Abre un Descriptor de Archivos personalizado (el número 3) apuntando al archivo log de destino en modo *append*. De esta forma, el script puede derivar
+   - **`exec 3>"$SALIDA"`**: Abre un Descriptor de Archivos personalizado (el número 3) apuntando al archivo log de destino en modo *append*. De esta forma, el script puede derivar
    de forma transparente reportes usando `>&3` sin interferir con la salida estándar en pantalla (`stdout`), permitiendo un control absoluto de flujos de datos asíncronos.
+   - Uso de nameref local -n arreglo=$1
 
 _____________________________________________________________________________________________________________________________________________________________________________________

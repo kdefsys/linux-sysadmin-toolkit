@@ -205,11 +205,9 @@ ________________________________________________________________________________
 
    chmod u+x log_rote.sh
 
-   ./log_rote.sh /var/log/myapp 7
+   ./log_rote.sh -d /var/log/myapp -m 7 [-h]
 
    Curiosidad Técnica:
-   - exec 3>>"$REPORTE": Abre el descriptor de archivo 3 apuntando al log. Esto permite usar >&3 en cualquier
-   parte del código para escribir en el log sin tener que abrir y cerrar el archivo constantemente o usar >>
    - mapfile -t archivos_logs < <(find ...): Es la forma más eficiente de capturar la salida de un comando en un arreglo. 
    Evita problemas con nombres de archivos que contienen espacios y es mucho más rápido que leer línea por línea en un 
    bucle while.

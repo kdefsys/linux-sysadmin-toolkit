@@ -13,6 +13,7 @@ shell bash, de la línea de comandos y de scripting.
 - [auditoria_avanzada.sh](#auditoria_avanzadash)
 - [log_rote.sh](#log_rotesh)
 - [auditoria_unificada_pro.sh](#auditoria_unificada_prosh)
+- [monitoreo_recursos_alertas.sh](#monitoreo_recursos_alertassh)
 _____________________________________________________________________________
 
 ## **auditar_archivos_criticos.sh**
@@ -255,3 +256,43 @@ ________________________________________________________________________________
    - Uso de nameref local -n arreglo=$1
 
 _____________________________________________________________________________________________________________________________________________________________________________________
+
+## **monitoreo_recursos_alertas.sh**
+   Nivel Intermedio/Avanzado **Temas: ** Monitoreo del sistema, Métricas en tiempo real (/proc), getopts, exec y descriptores de archivo. Análisis de procesos (ps)
+
+   Descripcion Técnica:
+   El script monitorea los recursos críticos del sistema Linux (Espacio en Disco, Memoria RAM y Uso de CPU) en tiempo real. Compara el consumo actual contra umbrales de alerta
+   configurables por el usuario mediante parámetros CLI (`-d`, `-m`, `-c`).
+   Si todos los recursos operan dentro de los parámetros seguros, el script confirma el estado saludable por consola sin generar archivos residuales. Si uno o más recursos exceden
+   el límite permitido, emite una advertencia inmediata y genera un archivo de reporte con marca temporal (alerta_recursos_YYYY-MM-DD_HH-MM-SS.log), adjuntando el cálculo del exceso
+   y un top 5 de los procesos que más recursos están consumiendo.
+
+   Uso Típico en las empresas:
+   En entornos corporativos y servidores de producción (DevOps/SysAdmin), este script se programa mediante tareas automatizadas de Cron para ejecutarse periódicamente (por ejemplo, 
+   cada 5 o 15 minutos).
+   - Prevención de Caídas (Outages): Evita colapsos de bases de datos o servidores web por agotamiento de espacio en disco o memoria RAM (Out Of Memory Killer).
+   - Diagnóstico Post-Mortem Rápido: Cuando un servicio se degrada, el reporte generado guarda una "fotografía" exacta de qué procesos consumían la CPU o RAM en el momento preciso
+   de la saturación.
+   - Capacidad de Automatización: Permite ser integrado en pipelines de CI/CD o sistemas de alertas tempranas sin depender de herramientas pesadas de terceros.
+
+   Ejemplo de Ejecución:
+
+   Ejecución con valores por defecto (Disco: 80%, RAM: 85%, CPU: 90%)
+   ./monitoreo_recursos_alertas.sh
+
+   Personalizando umbrales (Disco: 70%, RAM: 75%, CPU: 80%)
+   ./monitoreo_recursos_alertas.sh -d 70 -m 75 -c 80
+
+   Mostrar la guía de ayuda
+   ./monitoreo_recursos_alertas.sh -h
+
+   Curiosidad Técnica:
+   - Cálculo preciso de CPU sin herramientas externas: En lugar de invocar comandos pesados como top o mpstat, la función uso_cpu lee directamente /proc/stat, calcula la suma del
+   tiempo de trabajo y tiempo libre (idle), espera un delta de 1 segundo (sleep 1) y realiza una segunda lectura para calcular la diferencia matemática pura mediante aritmética de
+   Bash ($(( ... ))).
+   - exec 3>>"$REPORTE" (Redirección Eficiente): Asigna un descriptor de archivo personalizado (File Descriptor 3) vinculado al archivo de reporte. Esto evita tener que abrir y
+   cerrar el archivo .log con >> en cada línea de alerta, optimizando las operaciones de escritura en disco.
+   - ps autordenado dinámico: Se utiliza la opción --sort=-%mem y --sort=-%cpu nativa del comando ps en Linux para ordenar numéricamente de forma descendente los procesos sin
+   depender del comando sort, resolviendo discrepancias de formato de decimales (puntos vs comas) según la localización del sistema.
+
+___________________________________________________________________________________________________________________________________________________________________________________

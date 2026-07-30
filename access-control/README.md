@@ -53,16 +53,14 @@ Problemas que resuelve:
 
   chmod u+x auditoria_permisos_peligrosos.sh
 
-  sudo ./auditoria_permisos_peligrosos.sh /
+  sudo ./auditoria_permisos_peligrosos.sh -d <directorio> [-h]
 
   Curiosidad Técnica:
   El script destaca por su alta eficiencia al combinar comandos avanzados que evitan la sobrecarga del procesador
   - find ... -exec stat ... {} +; En lugar de ejecutar stat una vez por cada archivo encontrado.
   - mapfile -t: Carga todos los resultados de una sola vez en un array de Bash, evitando el uso de bucles while que son mas lentos
-  - Concatenación Dinámica en gawk ("^" array_rutas[indice]): Dentro del motor de gawk, el script construye expresiones regulares "al vuelo". Al usar el símbolo ^, el script
-  realiza una comparación de prefijo: verifica si la ruta del archivo comienza por una de las rutas seguras, permitiendo validar subdirectorios de forma inteligente sin
-  necesidad de listar cada archivo individualmente.
-
+  - uso de realpath para sacar la ruta verdadera.
+  - Uso de la expresio archivo="${file%%$'\t'*}", para sacar solo la ruta del archivo contenido en el mapfile
 
 ______________________________________________________________________________________________________________
 

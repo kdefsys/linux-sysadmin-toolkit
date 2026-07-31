@@ -113,12 +113,12 @@ ________________________________________________________________________________
    ./detector_permisos_inseguros.sh -f /tmp
 
    Curiosidad Técnica:
-   - find "$DIR" -type f \( -perm -o=r -and -perm -o=w \) Busca archivos que son world-readable y world-writable, indicando riesgos de acceso externo.
+   - find "$DIR" -type f -perm -o=rw Busca archivos que son world-readable y world-writable, indicando riesgos de acceso externo.
    - Sticky bit (-k) El script usa [ -k "$directorio" ] para detectar si un directorio compartido solo permite que el propietario de un archivo lo borre, 
    evitando que otros usuarios eliminen archivos ajenos.
-   - stat -c "%n|%A|%U|%u|%G|%F": Obtiene información completa de cada archivo, incluyendo permisos legibles, propietario, UID, GID y tipo de archivo.
+   - stat -c "%n|%a|%U|%u|%G|%F": Obtiene información completa de cada archivo, incluyendo permisos legibles, propietario, UID, GID y tipo de archivo.
    - Logs con timestamp Cada ejecución genera un archivo único: detector_YYYY-MM-DD_HH-MM-SS.log, facilitando auditorías periódicas sin sobrescribir resultados previos.
-   - getopts :d:cf: : Implementa un analizador de opciones robusto. Los dos puntos iniciales activan el "modo silencioso", permitiendo al desarrollador capturar errores
+   - getopts :d:cf:h : Implementa un analizador de opciones robusto. Los dos puntos iniciales activan el "modo silencioso", permitiendo al desarrollador capturar errores
    de argumentos faltantes de forma personalizada.
    - Optimización con mapfile y stat.
 

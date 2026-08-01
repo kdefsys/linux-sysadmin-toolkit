@@ -1,65 +1,71 @@
 #!/bin/bash
-### Nombre: auditoria_usuarios_privilegios
+### Nombre: auditoria_usuarios_privilegios.sh
 ### Autor: kdefsys
-### La gestion de usuarios es una de las áreas más críticas de la administración de sistemas. Un usuario con UID 0 que no sea root,
-### una contraseña vacia o un shell inexsitente son indicadores de una mala configuración o de un sistema comprometido.
-### Este script analiza archivos /etc/passwd y /etc/shadow para clasificar a los usuarios y detectar anomalías de seguridad.
-### Uso: sudo ./auditoria_usuarios_privilegios
+### Descripcion: En la administración de sistemas Linux, la gestión de identidades y accesos es una de las áreas más críticas de la seguridad. Configuración deficiente o ataques
+### maliciosos suelen dejar huellas en los archivos /etc/passwd y /etc/shadow. Muchas de esas anomalias son:
+### 1. Usuarios con UID 0 que no son root: Un usuario no legítimo con UID 0 obtiene privilegios totales sobre el kernel sin pasar por los mecanismos habituales de delegación (sudo).
+### 2. Cuentas con contraseñas vacías: Permiten el acceso inmediato sin ningún tipo de autenticación.
+### 3. Inconsistencias en el entorno del usuario: Shells configurados que apuntan a binarios inexistentes o directorios home asignados que no existen en el sistema de archivos.
+### Para prevenir esto, este script analiza a todos los usuarios registrados en el sistema, evalua su estado de seguridad y genera un reporte consolidado
+### Uso: sudo ./auditoria_usuarios_privilegios.sh
 
 if [[ "$EUID" -ne 0 ]]; then
-	echo -e "El script debe ejecutarse con privilegios de superusuario\nSaliendo del script..."
+	echo "El script debe de ejecutarse con privilegios sudo" >&2
 	exit 1
 fi
 
 FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
 REPORTE="usuarios_privilegios_${FECHA}.log"
+if [[ -f "$REPORTE" ]]; then rm -f "$REPORTE"; fi
 
-echo -e "======================================REPORTE DE CONFIGURACION DE USUARIOS CON PRIVILEGIOS=====================================\n\n" > "$REPORTE"
-function seguridad_de_cuenta {
-	local -n Natural=$3
-	local -n Estad=$4
+function seguridad_cuenta {
+	local name="$1"
+	local uid="$2"
+	local contraseña="$3"
+	local -n naturaleza="$4"
+	local -n estado_cuenta="$5"
 
-	if [[ "$2" -ge 1000 && "$2" -le 60000 ]]; then
-		Natural="HUMANA"
+	if (( uid >= 1000 && uid <= 60000 )); then
+		naturaleza="HUMANA"
 	else
-		Natural="sistema"
+		naturaleza="SISTEMA"
 	fi
 
-	if [[ "$2" -eq 0 && "$1" != "root" ]]; then
-		Estad="Crítico por no ser root"
+	if [[ "$uid" -eq 0 && "$name" != "root" ]]; then
+		estado_cuenta="[CRITICO] El usuario no es root y tiene permisos de superusuario"
+	elif [[ -z "$contraseña" ]]; then
+		estado_cuenta="[CRITICO] La contraseña esta vacia"
+	elif [[ "$contraseña" =~ ^(!|\*) ]]; then
+		estado_cuenta="Contraseña bloqueada"
 	else
-		if [[ -z "$5" ]]; then
-			Estad="CRITICO por contrasenia vacía"
-		elif [[ "$5" =~ "^(!|\*)" ]]; then
-			Estad="BLOQUEADA"
-		else
-			Estad="OK"
-		fi
+		estado_cuenta="[OK]"
 	fi
-
 }
 
 function seguridad_de_configuracion {
-	local -n Estad2=$3
-
-	if [[ ! -e "$1" ]]; then
-		Estad2="SOSPECHOSO (shell no existente)"
-	elif [[ ! -d "$2" ]]; then
-		Estad2="SOSPECHOSO (home no existente)"
+	local ruta_shell="$1"
+	local ruta_home="$2"
+	local -n estado_configuracion="$3"
+	if [[ ! -e "$ruta_shell" ]]; then
+		estado_configuracion="SOSPECHOSO (shell no existente)."
+	elif [[ ! -d "$ruta_home" ]]; then
+		estado_configuracion="SOSPECHOSO (home no existente)."
 	else
-		Estad2="BIEN"
+		estado_configuracion="BIEN"
 	fi
 }
 
-while IFS=":" read -r name uid shell direhome; do
+exec 3>>"$REPORTE"
+echo "========================================================REPORTE DE CONFIGURACION DE USUARIOS CON PRIVILEGIOS==========================================" >&3
 
-	contrasenia=$(getent shadow "$name" | cut -d ":" -f 2)
-	Naturaleza="ok"
-	Estado="ok"
-	Estado2="ok"
-	seguridad_de_cuenta "$name" "$uid" Naturaleza Estado "$contrasenia"
-	seguridad_de_configuracion "$shell" "$direhome" Estado2
-	printf "%s::%s::%s::%s::%s::%s::%s\n" "$name" "$uid" "$shell" "$direhome" "$Naturaleza" "$Estado" "$Estado2" | tee -a "$REPORTE" &> /dev/null
-
-done < <(gawk -F ":" 'BEGIN{OFS=":"} {print $1, $3, $7, $6}' /etc/passwd)
-
+while IFS=":" read -r name _ UID _ _ home shell; do
+	CONTRA="$(getent shadow "$name" | gawk -F ":" '{print $2}')"
+	naturaleza=""
+	cuenta=""
+	configuracion=""
+	seguridad_cuenta "$name" "$UID" "$CONTRA" naturaleza cuenta
+	seguridad_de_configuracion "$shell" "$home" configuracion
+	echo "$name::$UID::$shell::$home::$naturaleza::$cuenta::$configuracion" >&3
+done < "/etc/passwd"
+exec 3>&-
+echo "auditoria_usuarios_privilegios.sh ha concluido correctamente. Ver el reporte en $REPORTE"

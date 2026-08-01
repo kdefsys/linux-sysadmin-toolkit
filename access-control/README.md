@@ -154,11 +154,12 @@ ________________________________________________________________________________
 
    Curiosidad Técnica:
    - Rangos de UID: 1000–60000 → usuarios humanos <1000 → usuarios del sistema Esto permite diferenciar cuentas normales de cuentas del sistema automáticamente.
-   - Verificación de contraseña: contrasenia=$(getent shadow "$name" | cut -d ":" -f 2), forma profesional de consultar bases de datos administrativas.
+   - Verificación de contraseña: contrasenia=$(getent shadow "$name" | gawk -F ":" '{print $2}'), forma profesional de consultar bases de datos administrativas.
    - Chequeo de shell y home: [ ! -e "$shell" ] → shell inexistente [ ! -d "$home" ] → home inexistente
    - Identifica configuraciones sospechosas o inconsistentes en usuarios.
    - Logs con timestamp: usuarios_privilegios_YYYY-MM-DD_HH-MM-SS.log permite mantener historial de auditorías y revisiones periódicas.
-   - regex [[ "$5" =~ "^(!|\*) ]]"
+   - regex [[ "$5" =~ "^(!|\*) ]]
+   - El uso de IFS=":" read -r name _ UID _ _ home shell para leer en bucle
 
 ___________________________________________________________________________________________________________________________________________________________________________
 

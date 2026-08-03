@@ -235,14 +235,9 @@ ________________________________________________________________________________
 
    Curiosidad Técnica:
    El script implementa varias técnicas avanzadas de optimización y manejo de bajo nivel en Linux que optimizan el rendimiento y la seguridad:
-   1. exec 3>>"$SALIDA": En lugar de saturar el script abriendo y cerrando el archivo de log en cada línea con el operador >>, el script abre el descriptor de archivos personalizado 
-   3 apuntando al log al inicio del flujo. Todos los comandos envían su salida hacia este descriptor (>&3), lo que reduce drásticamente las operaciones de E/S (Entrada/Salida) y 
-   llamadas al sistema (syscalls), cerrándose limpiamente al finalizar con exec 3>&-.
-   2. ${FILE##*/}: Extrae de manera nativa el nombre del archivo eliminando toda la ruta absoluta previa. Esto reemplaza el uso del comando externo basename, evitando la necesidad de 
-   hacer un fork de un nuevo proceso en el sistema y ahorrando memoria durante la ejecución.
-   3. find "$DIRECTORIO" \( -type d -exec chmod 755 {} + \) -o \( -type f -exec chmod 644 {} + \): Aplica una estructura condicional lógica (-o que actúa como un operador OR) directamente 
-   dentro del binario find. Además, el uso de {} + agrupa los archivos encontrados y los pasa en bloque al comando chmod en una sola llamada en lugar de ejecutar un proceso chmod 
-   por cada archivo individual ({} \;). Esto reduce drásticamente el uso de CPU al procesar directorios con miles de archivos.
+   - Uso de las opciones -g y -u en los tests para comprobar si tiene los permisos especiales SETGUID y SETUID activados respectivamente.
+   - El uso de chmod, chown
+   - El uso de las opciones -L, -s y -e del comando usermod para bloquear la contraseña, cambiar el shell y especificar la fecha de expiracion del usuario respectivamente
 
 _____________________________________________________________________________________________________________________________________________________________________________________
 

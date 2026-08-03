@@ -182,16 +182,18 @@ ________________________________________________________________________________
 
    Ejemplo de Ejecución:
 
-   sudo ./auditor_de_integridad.sh -g
+   sudo ./auditor_de_integridad.sh -g [-h]
 
 
-   sudo ./auditor_de_integridad.sh -s /usr/bin
+   sudo ./auditor_de_integridad.sh -d /usr/bin [-h]
 
    Curiosidad Técnica:
    - find / -perm /7000: Utiliza el prefijo / para realizar un "OR" lógico. Captura cualquier archivo que tenga al menos uno de los bits especiales activos. El 7 es la suma octal de
    SUID(4) + SGID(2) + Sticky(1).
-   - Expansión de Parámetros (% y #): Al usar ${archivo%|*} y ${archivo#*|}, el script procesa los datos directamente en la memoria del shell. Esto es drásticamente más rápido que 
+   - Expansión de Parámetros (% y #): Al usar ${archivo%|*} y ${archivo##*|}, el script procesa los datos directamente en la memoria del shell. Esto es drásticamente más rápido que 
    invocar comandos externos como cut o awk dentro de un bucle que recorre miles de archivos.
+   - El uso de la opcion grep -F
+   - El uso de una funcion dentro de una susticion de procesos: mapfile -t files < <(escaneo "$DIRECTORIO").
 
 ___________________________________________________________________________________________________________________________________________________________________________________
 

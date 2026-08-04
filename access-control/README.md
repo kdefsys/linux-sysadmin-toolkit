@@ -17,6 +17,8 @@ Los scripts generan logs detallados con información útil para **auditorías de
 - [auditoria_usuarios_privilegios.sh](#auditoria_usuarios_privilegiossh)
 - [auditor_de_integridad.sh](#auditor_de_integridadsh)
 - [quarantine_and_lockdown.sh](#quarantine_and_lockdownsh)
+- [access_guard.sh](#access_guardsh)
+
 -------------------------------------------------------------------------------------------------------------
 
 ## **auditoria_permisos_peligrosos.sh**
@@ -241,3 +243,72 @@ ________________________________________________________________________________
 
 _____________________________________________________________________________________________________________________________________________________________________________________
 
+## **access_guard.sh**
+   Nivel: **Intermedio/Avanzado** **Temas:** Bash Scripting, Administración de Usuarios y Grupos, Permisos POSIX, SGID, ACLs (Control de Acceso Fino), Auditoría de Seguridad,
+   Blindaje e Inmutabilidad.
+
+   Descripcion Tecnica:
+   **access_guard.sh** es una herramienta integral de administración del sistema y auditoría de seguridad automatizada escrita en Bash. Su objetivo principal es aplicar de manera
+   estricta el principio de **Mínimo Privilegio** (Least Privilege) dentro de entornos de sistemas de archivos Linux. El script se organiza de forma modular mediante un procesador 
+   de opciones (getopts) para ofrecer cuatro funcionalidades principales:
+   1. **Módulo de Aprovisionamiento:** Crea automáticamente usuarios y grupos, asigna ownership al directorio objetivo (`root:<grupo>`), restringe permisos base (`770`) y configura el
+   bit especial SGID (`g+s`) para forzar que todos los archivos futuros hereden la propiedad del grupo.
+   2. **Módulo de Control Fino con ACLs:** Concede permisos específicos de lectura y ejecución (`r-x`) a un usuario sobre un directorio mediante ACLs recursivas, y configura la 
+   Default ACL para asegurar que los subdirectorios y archivos futuros mantengan la misma restricción.
+   3. **Módulo de Auditoría de Permisos Peligrosos:** Escanea de forma recursiva un directorio en busca de tres vectores comunes de riesgo: archivos con permisos SUID/SGID habilitados, 
+   archivos/carpetas con permiso de escritura para otros (`o+w`), y archivos huérfanos (sin usuario o grupo válido). Toda la salida se guarda de forma estructurada en un archivo `.log`
+   con marca de tiempo usando descriptores de archivo dedicados.
+   4. **Módulo de Revocacion y Blindaje:** Revoca inmediatamente el acceso de un usuario en el sistema eliminando de forma exhaustiva sus ACLs explícitas a lo largo del sistema de
+   archivos local (`-xdev`), desvinculándolo de todos los grupos secundarios y bloqueando su capacidad de inicio de sesión cambiando su shell a `/usr/sbin/nologin`.
+
+   Uso Típico en las Empresas:
+   En empresas de tecnología como TechSecure Labs, la alta rotación de personal, la incorporación continua de desarrolladores y la movilidad entre proyectos generan un fenómeno 
+   conocido como **"Permission Creep"** (acumulación progresiva de permisos no requeridos).
+   - **Onboarding / Creación de entornos compartidos:** Cuando entra un nuevo equipo de desarrollo, SysAdmins u DevSecOps ejecutan el módulo de aprovisionamiento para crear el entorno
+   de trabajo compartido de forma segura y uniforme sin recurrir a permisos globales peligrosos como `777`.
+   - **Proyectos temporales o Auditorías internas:** Cuando un auditor externo o un consultor necesita revisar cierta información sensible sin modificarla, se le asigna acceso
+   temporal mediante el módulo de ACLs sin alterar el ownership tradicional POSIX.
+   - **Revisiones periódicas de cumplimiento y Hardening:** Antes de auditorías de estándares como ISO 27001, SOC 2 o PCI-DSS, el equipo de ciberseguridad ejecuta el módulo de
+   auditoría para detectar configuraciones inseguras de archivos (huérfanos o con escritura pública).
+   - **Offboarding de empleados:** Cuando un empleado deja la empresa o cambia de departamento, el módulo de blindaje garantiza que el usuario pierda acceso inmediato a todos los
+   directorios y no conserve vías de persistencia a través de grupos o ACLs residuales.
+
+   Ejemplo de Ejecucion:
+
+   ```# 1. Módulo de Aprovisionamiento (Crea usuario/grupo y configura SGID en la carpeta)
+   sudo ./access_guard.sh -a jperez -g devops -d /var/www/proyecto_alpha
+
+   # 2. Módulo de Control Fino con ACLs (Concede r-x a un usuario específico y herencia predeterminada)
+   sudo ./access_guard.sh -c /var/www/proyecto_alpha -u mrodriguez
+
+   # 3. Módulo de Auditoría de Permisos Peligrosos (Escanea vulnerabilidades e imprime reporte .log)
+   sudo ./access_guard.sh -s /var/www/proyecto_alpha
+
+   # 4. Módulo de Revocación y Blindaje (Elimina ACLs, remueve grupos secundarios y asigna nologin)
+   sudo ./access_guard.sh -r jperez
+
+   # 5. Desplegar la ayuda en consola
+   ./access_guard.sh -h
+   ```
+
+   Curiosidades Tecnicas:
+   El script utiliza varios comandos y constructos avanzados de Bash para garantizar velocidad, precisión y seguridad en la ejecución:
+   - **Búsqueda eficiente con -perm -4000 y -perm -2000:**
+   En lugar de parsear texto con ls -l (lo cual es lento e inseguro en scripts), el comando find usa máscaras octales bit a bit para identificar exactamente archivos con los bits 
+   SUID (4000) o SGID (2000) activos.
+   - **Límite de Escaneo al Sistema de Archivos Local (find / -xdev ...):**
+   En el módulo de blindaje, al revocar las ACLs del usuario en todo el disco mediante find / -xdev, la bandera -xdev evita que find cruce a otros sistemas de archivos montados 
+   (como carpetas NFS en red, /proc, /sys o unidades USB), previniendo bloqueos del sistema o demoras extremas durante la ejecución
+   - **Manejo Dual de ACLs POSIX (setfacl en Árbol vs. Plantilla Predeterminada):**
+   Para garantizar un control de acceso fino que perdure en el tiempo, el script combina dos modos de ejecución de setfacl:
+   	1. Aplicación Recursiva Actual (-R):
+   		setfacl -R -m u:"$USUARIO_PERMISOS":r-x "$DIRECTORIO_PERMISOS" 2>/dev/null
+   	   La bandera -R (recursiva) recorre todo el árbol de directorios existente en ese momento aplicando el modificador -m para otorgar permisos explícitos de lectura y
+   	   ejecución (r-x) al usuario especificado, sin alterar los permisos tradicionales POSIX (propietario/grupo/otros) del resto de archivos.
+	2. Herencia Automática para el Futuro (-d / Default ACL):
+   		setfacl -d -m u:"$USUARIO_PERMISOS":r-x "$DIRECTORIO_PERMISOS" 2>/dev/null
+   	   La bandera -d (Default) define una regla de ACL predeterminada únicamente a nivel de carpeta. Esto funciona como una "plantilla de herencia": cualquier nuevo archivo o
+   	   subdirectorio que un usuario cree dentro de esa carpeta en el futuro heredará automáticamente la regla u:usuario:r-x, evitando que el administrador tenga que reejecutar
+   	   el script cada vez que se agreguen archivos.
+
+_____________________________________________________________________________________________________________________________________________________________________________________

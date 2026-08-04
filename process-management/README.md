@@ -54,11 +54,13 @@ _____________________________________________________________________________
    - exec 3>>"$REPORTE": En lugar de usar >> en cada línea, abrimos un descriptor de archivo personalizado (el número 3). Esto centraliza la escritura 
    al log y hace el código más limpio.
    - mapfile -t ... < <(...): Combina un Process Substitution con mapfile para cargar la salida de ps directamente en un arreglo de Bash, evitando el uso de archivos temporales.
-   - Lógica en gawk: Se utiliza un arreglo asociativo (arreglo[$2]+=1) dentro de gawk para agrupar y contar zombies por su PPID en una sola pasada, lo cual es extremadamente 
+   - Lógica en gawk: Se utiliza un arreglo asociativo (arreglo[$2]++) dentro de gawk para agrupar y contar zombies por su PPID en una sola pasada, lo cual es extremadamente 
    eficiente en sistemas con miles de procesos.
    - ps -eo ... --no-headers: El uso de --no-headers es vital en scripts para evitar que el encabezado de las columnas (PID, PPID...) sea interpretado como un proceso real.
-
-_____________________________________________________________________________
+   - El uso de esta parte: gawk 'BEGIN{OFS="|"} $4~"^Z"{ $6=""; for(i=6; i<=NF; i++) $6 = $6 (i==6 ? "" : " ") $i; print $1, $2, $3, $4, $5, $6}' para controlar los cmds con espacios
+   y si el ps no arroja nada.	 
+   - Si se puede usar el redireccionamiento dentro del gawk
+_______________________________________________________________________________________________________________________________________________________________________________
 
 ## **auditoria_procesos_largos.sh**
    Nivel Avanzado **Temas:** Gestión de Procesos, Aritmética de Bash, Expresiones Regulares, Redirección de Descriptores

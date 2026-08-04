@@ -87,12 +87,15 @@ ________________________________________________________________________________
 
    Curiosidad Técnica:
    El script utiliza una combinación de técnicas de Bash de alto rendimiento:
+   - SCRIPT="$(basename "$0")": Para guardar el archivo del script
    - ps -eo ...,etimes: La columna etimes es fundamental; a diferencia de time, esta devuelve el tiempo transcurrido desde el inicio del proceso en segundos absolutos, lo que 
    permite hacer comparaciones matemáticas directas sin necesidad de parsear formatos complejos de horas y minutos.
-   - while read -r pid ... comando: Al final de la lista de variables, la variable comando actúa como un "sumidero", capturando todo el texto restante de la línea. Esto garantiza 
-   que la ruta completa y los argumentos del comando original se mantengan íntegros, incluso si contienen espacios.
-   - [[ "$estado" =~ ^(S|R|D) ]]: Se utiliza una expresión regular extendida para filtrar los estados de proceso. Esto permite evaluar múltiples condiciones en una sola línea de 
+   - Uso del if implícito de gawk: gawk -v t="$TIEMPO" -v script="$SCRIPT" 'BEGIN{OFS="|"} $8~/^(S|R|D)/ && $4>t && $9!~/^\[.*\]/ && $0!~script
+   - $8 =~ /^(S|R|D)/: Se utiliza una expresión regular extendida para filtrar los estados de proceso. Esto permite evaluar múltiples condiciones en una sola línea de 
    código, haciendo el script más eficiente.
+   - $4>t: Para que el etimes sea mayor al tiempo especificado
+   - $9!~/^\[.*\]/: Para que el comando no sea un comando del sistema del kernel [...].
+   - $0!~script: Para que la linea completa del proceso no contenga el nombre de nuestro script
    - exec 3>>"${REPORTE}": Se abre un descriptor de archivo personalizado (3) para la escritura del log. Esto es mucho más eficiente que usar >> en cada línea, ya que el archivo 
    permanece abierto durante la ejecución del script, reduciendo las operaciones de apertura/cierre de disco.
 

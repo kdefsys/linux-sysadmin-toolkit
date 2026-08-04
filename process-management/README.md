@@ -121,10 +121,6 @@ _____________________________________________________________________________
    ./monitoreo_cpu_memoria.sh /var/log/metrics 25 20
 
    Curiosidad Técnica:
-   - read SUMA_CPU SUMA_MEM <<< "$TOTALES": El uso de este Here String evita la creación de un subshell (lo que ocurriría con un pipe |), permitiendo que los valores calculados 
-   por gawk persistan en el hilo principal del script.
-   - split($3, cpu, " ") en gawk: Esta técnica de manipulación de cadenas permite limpiar las etiquetas del reporte (como "CPU:" o "%") para realizar operaciones matemáticas 
-   puras sobre los valores decimales, demostrando un manejo avanzado de procesamiento de texto.
 
 ________________________________________________________________________________________
 

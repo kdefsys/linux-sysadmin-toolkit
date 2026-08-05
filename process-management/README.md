@@ -118,10 +118,14 @@ _____________________________________________________________________________
 
    Ejemplo de ejecución:
 
-   ./monitoreo_cpu_memoria.sh /var/log/metrics 25 20
+   ./monitoreo_cpu_memoria.sh -d /var/log/metrics -m 25 -c 20
 
    Curiosidad Técnica:
-
+   - El uso de bc para operar numeros decimales: local es_ok=$(echo "$consumo <= $umbral" | bc -l) y local es_obs=$(echo "$consumo <= ($umbral * 1.5)" | bc -l)
+   - El uso de mapfile -t procesos < <(ps -eo pid,ppid,pcpu,pmem,etimes,cmd --no-headers: Uso de --no-headers, para que no imprima el encabezado.
+   - Luego se hizo el uso de gawk con un if implicito que tenia esta forma: gawk -v script="$SCRIPT" 'BEGIN{OFS="|"} $0!~script{$6=""; for(i=6;i<=NF;++i) $6 = $6 (i==6 ? "" : " ") $i; print $1, $2, $3, $4, $5, $6}'
+   - Luego para continuar con la tuberia se hizo un while para poner los estados
+   - LC_ALL=C sort -t "|" -k 3,3nr -k 4,4nr: Como los porcentajes pueden ser decimales, se usa la variable LC_ALLC=C para que pueda ordenar numeros decimales.
 ________________________________________________________________________________________
 
 ## **mapeo_jerarquico.sh**

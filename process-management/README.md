@@ -190,7 +190,7 @@ ________________________________________________________________________________
 
    Ejemplo de Ejecución:
 
-   sudo ./anti_mutation_watchdog.sh /shared/archivos_criticos 5 /etc/watchdog/lista_blanca.txt
+   sudo ./anti_mutation_watchdog.sh -d /shared/archivos_criticos -u 5 -f /etc/watchdog/lista_blanca.txt [-h]
 
    Curiosidad Técnica:
    El script destaca por el uso eficiente de estructuras nativas del sistema operativo Linux y optimizaciones lógicas avanzadas para evitar colisiones de tiempo (race conditions):

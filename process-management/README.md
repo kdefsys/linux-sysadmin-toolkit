@@ -242,10 +242,12 @@ ________________________________________________________________________________
    	gawk '{cmd_full=""; for (i=6; i<=NF; ++i) cmd_full=(cmd_full ? cmd_full" " : "")$i; print $1"|"$2"|"$3"|"$4"|"$5"|"cmd_full}'
   	El comando ps entrega los argumentos del proceso al final. Si un comando contiene espacios en blanco (ej. python3 exploit.py --run), un extractor simple rompería las variables. 
    	Este bucle iterativo de gawk une dinámicamente desde el sexto campo hasta el final de la línea (NF), encapsulando el comando entero antes de enviarlo por la tubería.
-   3. Sustitución de Procesos No Bloqueante (done < <(ps ...)): Al alimentar el ciclo while final mediante < <(...) en lugar de una tubería tradicional (ps | while), se evita la 
+   3. Sustitución de Procesos No Bloqueante (done < <()): Al alimentar el ciclo while final mediante < <(...) en lugar de una tubería tradicional (ps | while), se evita la 
    creación de un subshell independiente. Esto asegura que el mapa de memoria del arreglo asociativo (declare -A estados_procesos) guarde los estados globalmente y no se destruya 
    al terminar la lectura.
    4. trap cerramos_el_reporte SIGINT: Intercepta la señal de terminación de teclado (Ctrl + C) para ejecutar una función destructora que vuelca estadísticas finales (conteo real de 
    penalizaciones con la variable $VARIACIONES), limpia el descriptor de archivo (exec 3>&-) y cierra el programa de manera íntegra y elegante.
+   5. El uso de kill -0 "$p" para reiniciar si el proceso finalizo antes de los 4 segundos.
+   6. Uso de bc -l para operar numeros decimales
 
 _____________________________________________________________________________________________________________________________________________________________________________________

@@ -41,9 +41,11 @@ ________________________________________________________________________________
    - exec 3>>"$REPORTE" (Descriptores de Archivos Personalizados): En lugar de hacer un común echo "..." >> archivo.log en cada línea, el script abre el descriptor de archivos 
    número 3 apuntando al log en modo append. Usar >&3 canaliza la salida directamente a ese canal de forma eficiente y limpia. Al final, exec 3>&- cierra el descriptor de manera 
    segura para liberar recursos del sistema.
-   - La tubería lsmod | gawk '{print $1}' | grep -qxi "$modulo": Para blindar el script contra falsos positivos, se usa gawk para aislar estrictamente la primera columna de lsmod 
+   - La tubería lsmod | gawk '{print $1}' | grep -ixq "$modulo": Para blindar el script contra falsos positivos, se usa gawk para aislar estrictamente la primera columna de lsmod 
    (donde residen los nombres de los módulos cargados). Luego, grep -x obliga a hacer una coincidencia exacta de toda la línea, evitando que un módulo corto (como lp) de un falso 
    positivo con uno más largo (como lp_vivid). La bandera -q (quiet) asegura que la comprobación sea silenciosa y no altere los logs.
+   - El uso de la opcion -F para especificar los campos en el comando modinfo: -F description y -F license
+   - El uso de modprobe -r "$modulo", para descargar el modulo de la memoria RAM.
 
 _____________________________________________________________________________________________________________________________________________________________________________________
 

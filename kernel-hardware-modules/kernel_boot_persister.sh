@@ -1,16 +1,28 @@
 #!/bin/bash
-###Nombre: kernel_boot_persister.sh
-###Autor: kdefsys
-###Contexto: Los cambios realizados con modprobe son volátiles y se pierden tras un reinicio. En entornos de servidores es crucial automatizar
-###la persistencia de configuraciones del kernel (habilitar modulos criticos o banear controladores vulnerables/inncesearios) asegurando la coherencia
-###con el hardware fisico instalado.
-###Uso: sudo ./kernel_boot_persister.sh [--blackist | --enable] <modulo>
+### Nombre: kernel_boot_persister.sh
+### Autor: kdefsys
+### Descripcion: Los cambios realizados dinámicamente en el kernel de Linux (como cargar o descargar módulos en caliente) son volátiles y se pierden tras reiniciar el sistema.
+### En entornos de servidores es fundamental garantizar la persistencia de la configuración: por un lado, auto-cargar módulos críticos requeridos por el sistema al iniciar; por el
+### otro, bloquear permanente (blacklist) controladores vulnerables, innecesarios o que representen un riesgo de seguridad. Además, para evitar configuraciones ciegas o incoherentes,
+### se requiere verificar primero si existe hardware físico en el equipo vinculado al módulo que se desea gestionar antes de escribir cualquier regla permanente.
+### Uso: sudo ./kernel_boot_persister.sh [--blacklist | --enable] <modulo>
 
-if [[ "$EUID" -ne 0 ]]; then echo "El script debe de ejecutarse como superusuario"; exit 1; fi
+function help {
+	echo "El script se debe de ejecutar asi: sudo ./kernel_boot_persister.sh [--blacklist | --enable] <modulo>"
+	echo "   --blacklist : Bloquear el modulo."
+	echo "   --enable : Autocargado del modulo en el arranque."
+}
 
-if [[ $# -ne 2 ]]; then
-	echo "[-] Error de sintaxis."
-	echo "Uso correcto: sudo $0 [--blacklist | --enable] <modulo>"
+if [[ "$EUID" -ne 0 ]]; then
+	echo "El script debe de ejecutarse con privilegios sudo." >&2
+	echo "Saliendo del script" >&2
+	exit 1
+fi
+
+if [[ "$#" -ne 2 ]]; then
+	echo "El script no tiene los argumentos necesarios para empezar la ejecucion." >&2
+	help
+	echo "Saliendo del script" >&2
 	exit 1
 fi
 
@@ -20,32 +32,29 @@ MODULO="$2"
 DIR_BLACKLIST="/etc/modprobe.d"
 DIR_LOAD="/etc/modules-load.d"
 
-echo "[+] Iniciando Gestor de Persistencia del Kernel..."
+echo "[+] Iniciando Gestor de Persistencia del kernel..."
 echo "--------------------------------------------------"
 
-#=====================================================================
-# FASE 1: DIAGNÓSTICO DE HARDWARE ASOCIADO
-#=====================================================================
-echo "[*] Escanenado presencia de hardware físico..."
-
+### =======================================================================================================================
+### 				FASE 01: DIAGNOSTICO E INSPECCION DE HARDWARE
+### =======================================================================================================================
+echo "[+] Escaneando presencia de hardware fisico..."
 HW_DETECTADO=0
 
 case "$MODULO" in
-	*usb*|*video*|joydev|ath9k|rtw*)
-		# Buscamos en el subsistema USB
-		if lsusb 2/dev/null | grep -qiE "video|camera|wireless|wlan|media|input"; then
+	*usb*|*vide*|joydev|ath9k|rtw*)
+		if lsusb 2>/dev/null | grep -qiE "video|camera|wireless|wlan|media|input"; then
 			HW_DETECTADO=1
 		fi
 		;;
 	*e1000e*|*r8169*|*nvme*|*tg3*)
-		# Buscamos en el bus PCI/PCIe
 		if lspci 2>/dev/null | grep -qiE "ethernet|network|audio|vga|non-volatile"; then
 			HW_DETECTADO=1
 		fi
 		;;
 	*)
 		ALIAS_HW=$(modinfo -F alias "$MODULO" 2>/dev/null)
-		if [[ -not -z "$ALIAS_HW" ]]; then
+		if [[ -n "$ALIAS_HW" ]]; then
 			HW_DETECTADO=1
 		fi
 		;;
@@ -54,27 +63,26 @@ esac
 if [[ "$HW_DETECTADO" -eq 1 ]]; then
 	echo "		-> [INFO] Se detectaron indicios de hardware compatible en los buses del sistema."
 else
-	echo "		-> [ADVERTENCIA] No se detectó hardware físico activo directamente vinculado a $MODULO"
+	echo "		-> [ADVERTENCIA] No se detecto hardware fisico activo directamente vinculado a $MODULO."
 fi
 
-#=====================================================================
-# FASE 2: APLICACIÓN DE PERSISTENCIA
-#=====================================================================
-echo "[*] Aplicando directivas de persistencia en el almacenamiento..."
+### =======================================================================================================================
+### 					FASE 02: APLICACION DE PERSISTENCIA
+### =======================================================================================================================
+echo "[+] Aplicando directivas de persistencia en el almacenamiento..."
 
 case "$ACCION" in
 	--blacklist)
 		ARCHIVO_CONF="${DIR_BLACKLIST}/blacklist-${MODULO}.conf"
-		# Inyeccion segura en el directorio de modprobe
 		echo "blacklist $MODULO" | tee "$ARCHIVO_CONF" >/dev/null
 		if [[ -f "$ARCHIVO_CONF" ]]; then
-			echo "	[SUCCESS] Módulo '$MODULO' bloqueado permanentemente en boot."
+			echo "	[SUCCESS] Modulo $MODULO bloqueado permanentemente en boot."
 			echo "	[CONF] Archivo generado en: $ARCHIVO_CONF"
-			echo "[*] Sincronizando estado en la memoria RAM..."
+			echo "[*] Sincronizando estado de la memoria RAM..."
 			if modprobe -r "$MODULO" 2>/dev/null; then
-				echo "	[SUCCESS] Módulo '$MODULO' descargado de la RAM en caliente."
+				echo "	[SUCCESS] Modulo $MODULO descargado de la RAM en caliente."
 			else
-				echo "	[INFO] El módulo no estaba activo en la RAM o está siendo retenido por el sistema."
+				echo "	[INFO] El modulo no estaba activo en la RAM o esta siendo retenido por el sitema."
 			fi
 		else
 			echo "	[ERROR] No se pudo escribir la directiva de blacklist."
@@ -96,13 +104,13 @@ case "$ACCION" in
 			echo "    [ERROR] No se pudo escribir la directiva de carga automática."
 		fi
 		;;
+
 	*)
-		echo "[-] Parámetro no reconocido: $ACCION"
-		echo "Use únicamente --blacklist o --enable"
-        	exit 1
+		echo "[-] Parametro no reconocido: $ACCION" >&2
+		help
+		exit 1
 		;;
 esac
 
-echo "--------------------------------------------------"
-echo "[+] Operación de persistencia finalizada con éxito."
-
+echo "------------------------------------------------------------------------"
+echo "[+] Operacion de persistencia finalizada con exito."

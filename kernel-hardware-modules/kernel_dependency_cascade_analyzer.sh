@@ -46,6 +46,10 @@ if lsmod 2>/dev/null | gawk '{print $1}' | grep -qix "$MODULO"; then
 	TOTAL="${#dependientes[@]}"
 	echo "   -> Dependientes:   ${dependientes[*]}"
 
+	### ============================================================================
+	### 			FASE 02: DESCARGAS EN CASCADA
+	### ============================================================================
+
 	echo "[+] FASE 2: Ejecutando Descarga en Cascada"
 	echo "------------------------------------------"
 	if [[ "${#dependientes[@]}" -ne 0 ]]; then
@@ -89,6 +93,11 @@ if lsmod 2>/dev/null | gawk '{print $1}' | grep -qix "$MODULO"; then
 	fi
 else
 	echo "	-> Estado en RAM:     [NO CARGADO]"
+
+	### ==========================================================================
+	### FASE 3: DISGNOSTICO EN DISCO Y PRERREQUISITOS DE INSTALACION
+	### ==========================================================================
+
 	echo "[+] FASE 3: Diagnostico en Disco y Prerrequisitos"
 	echo "-------------------------------------------------"
 	cadena="$(modinfo "$MODULO" | head -n 1)"

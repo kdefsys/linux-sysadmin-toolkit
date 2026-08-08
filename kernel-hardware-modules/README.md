@@ -8,6 +8,7 @@ de controladores.
 CONTENIDO:
 - [kernel_module_auditor.sh](#kernel_module_auditorsh)
 - [kernel_boot_persister.sh](#kernel_boot_persistersh)
+- [kernel_dependency_cascade_analyzer.sh](#kernel_dependency_cascade_analyzersh)
 - [scsi_storage_auditor.sh](#scsi_storage_auditorsh)
 - [usb_security_guard.sh](#usb_security_guardsh)
 ____________________________________________________________________________________________________________________________________________________________________________________
@@ -84,6 +85,58 @@ ________________________________________________________________________________
    4. El directorio para blacklist es /etc/modprobe.d y el archivo debe llamarse: /etc/modprobe.d/blacklis-$MODULO.conf", cuyo contenido debe tener este formato 'blacklist $MODULO'
    5. El directorio de persistencia en boot tiene es /etc/modules-load.d y el archivo debe llamarse: /etc/modules-load.d/$MODULO.conf, cuyo contenido solo debe tener el nombre del
    modulo
+
+____________________________________________________________________________________________________________________________________________________________________________________
+
+## **kernel_dependency_cascade_analyzer.sh**
+   Nivel "Intermedio/Avanzado" **Temas:** Módulos del kernel, Gestión de dependencias en RAM, Triage de incidentes, Automatización con Bash y gawk
+
+   Descripcion Técnica:
+   Este script realiza una auditoría y descarga en cascada segura de módulos del kernel Linux cargados en memoria RAM. Al intentar descargar un módulo raíz o crítico del que dependen
+   otros subsistemas, el sistema operativo rechaza la operación por recursos ocupados. El script resuelve esto mapeando en tiempo real el árbol de dependencias activas
+   (`módulos "hijos"`) mediante la inspección de la tabla del kernel (`lsmod`) y ejecutando una remoción ordenada paso a paso. Si un módulo dependiente no puede ser descargado por
+   estar en uso activo, la herramienta aborta el proceso inmediatamente para evitar inestabilidad en el sistema. Además, en caso de que el módulo objetivo no esté cargado, realiza
+   un diagnóstico en disco para extraer sus metadatos y prerrequisitos requeridos (`modinfo`).
+
+   Uso Típico en las empresas:
+   En entornos corporativos y servidores de producción (especialmente en SOCs, respuesta a incidentes y administración de infraestructura Linux), esta herramienta se utiliza en los
+   siguientes escenarios:
+   - **Aislamiento de Controladores Maliciosos o Vulnerables:** En un incidente de ciberseguridad donde se detecta un módulo de kernel sospechoso (rootkit en espacio de kernel o
+   driver comprometido), el equipo de SecOps puede descargarlo en caliente sin tener que reiniciar el servidor de producción.
+   - **Mantenimiento y Unload de Hardware Sin Reinicio:** Al realizar mantenimiento de tarjetas de red (NICs), HBAs de almacenamiento o GPUs, permite descargar la pila completa de
+   controladores dependientes de forma limpia antes de realizar hot-swapping o actualización de drivers.
+   - **Prevención de Kernel Panics:** Evita que los administradores fuercen la descarga de módulos críticos de forma errónea, bloqueando el proceso de descarga si algún proceso del
+   sistema mantiene bloqueado un driver dependiente.
+
+   Ejemplo de Ejecucion:
+
+   ```
+   # Dar permisos de ejecución
+   chmod +x kernel_dependency_cascade_analyzer.sh
+
+   # Ejecución obligatoria con privilegios de superusuario (root/sudo)
+   sudo ./kernel_dependency_cascade_analyzer.sh <nombre_del_modulo>
+
+   # Ejemplo 1: Módulo con dependencias en RAM
+   sudo ./kernel_dependency_cascade_analyzer.sh snd_pcm
+
+   # Ejemplo 2: Módulo no cargado actualmente
+   sudo ./kernel_dependency_cascade_analyzer.sh e1000e
+
+   ```
+
+   Curiosidad Técnica:
+
+   - **Procesamiento dinámico del árbol con gawk y split:**
+   `mapfile -t dependientes < <(lsmod 2>/dev/null | gawk '{print $1, $4}' | gawk -v mod="$MODULO" '{ if(mod == $1){ split($2,arreglo,","); for(indice in arreglo){printf "%s\n", arreglo[indice]} }}')`
+   En lugar de usar tuberías complejas con cut, tr o sed, el script utiliza la función interna split() de gawk para tomar la cuarta columna de lsmod (que contiene los dependientes
+   delimitados por comas ,), fragmentarla en un arreglo en memoria e imprimir cada submódulo en una nueva línea. Esto permite que mapfile capture directamente la lista limpia dentro
+   de un array de Bash.
+   - **Diferenciación de Dependencias vs Prerrequisitos:** El script maneja dos direcciones conceptuales de dependencias:
+   1. Dependientes activos (RAM): Obtenidos desde lsmod (módulos cargados encima del objetivo).
+   2. Prerrequisitos estáticos (Disco): Obtenidos con modinfo -F depends (módulos que el objetivo necesita abajo para poder iniciar).
+   - Uso de modprobe -r
+   - Uso de ${dependencias[*]}, para que me de como resultado todo en una sola cadena.
 
 ____________________________________________________________________________________________________________________________________________________________________________________
 

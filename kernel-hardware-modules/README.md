@@ -81,6 +81,9 @@ ________________________________________________________________________________
    3. Mapeo de Firmas Binarias (modinfo -F alias): Como "Plan B" de diagnóstico, si el módulo no está en las listas predefinidas, el script inspecciona los metadatos del archivo 
    binario comprimido del controlador en disco para extraer sus registros de alias de hardware. Si el driver cuenta con alias válidos, el script deduce programáticamente que 
    interactúa con elementos físicos.
+   4. El directorio para blacklist es /etc/modprobe.d y el archivo debe llamarse: /etc/modprobe.d/blacklis-$MODULO.conf", cuyo contenido debe tener este formato 'blacklist $MODULO'
+   5. El directorio de persistencia en boot tiene es /etc/modules-load.d y el archivo debe llamarse: /etc/modules-load.d/$MODULO.conf, cuyo contenido solo debe tener el nombre del
+   modulo
 
 ____________________________________________________________________________________________________________________________________________________________________________________
 

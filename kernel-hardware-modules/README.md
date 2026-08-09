@@ -185,6 +185,7 @@ ________________________________________________________________________________
    - Uso del grep -rqE "^\s*blacklist\s+${modulo}\b" /etc/modprobe.d/*.conf 2>/dev/null: para que nos imprima todas las lineas que cumplen esa expresion regular usando Globbing en
    el directorio especificado.
    - grep -vE '^\s*#|^\s*$' "$ARCHIVO": Para evitar las lineas que sean comentarios y las lineas vacias.
+   - Uso de unset modulos: Para eliminar el contenido del mapfile modulos
 
 _____________________________________________________________________________________________________________________________________________________________________________________
 

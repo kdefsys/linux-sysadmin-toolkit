@@ -9,6 +9,7 @@ CONTENIDO:
 - [kernel_module_auditor.sh](#kernel_module_auditorsh)
 - [kernel_boot_persister.sh](#kernel_boot_persistersh)
 - [kernel_dependency_cascade_analyzer.sh](#kernel_dependency_cascade_analyzersh)
+- [kernel_security_integrity_auditor.sh](#kernel_security_integrity_auditorsh)
 - [scsi_storage_auditor.sh](#scsi_storage_auditorsh)
 - [usb_security_guard.sh](#usb_security_guardsh)
 ____________________________________________________________________________________________________________________________________________________________________________________
@@ -139,6 +140,53 @@ ________________________________________________________________________________
    - Uso de ${dependencias[*]}, para que me de como resultado todo en una sola cadena.
 
 ____________________________________________________________________________________________________________________________________________________________________________________
+
+## **kernel_security_integrity_auditor.sh**
+   **Nivel "Avanzado"** **Temas:** Kernel Modules, Tainted Kernel Flags, Digital Signatures, Hardware & Driver Security, Modprobe Persistence, System Hardening.
+
+   Descripción Técnica:
+   Este script realiza una auditoría integral de seguridad sobre la memoria RAM y la capa del kernel Linux. Examina el estado de contaminación (tainted flags) del kernel a nivel 
+   global y por módulo individual, valida las licencias de software (GPL vs. Propietario) y verifica la presencia de firmas digitales para mitigar la ejecución de rootkits o
+   controladores no verificados. Adicionalmente, audita las reglas de persistencia en /etc/modprobe.d/ y /etc/modules-load.d/, detectando conflictos de ejecución (módulos activos
+   cargados que figuran en listas negras) y eliminando/reportando configuraciones huérfanas con parámetros obsoletos o inválidos. Si se ejecuta con el parámetro --strict, aplica
+   remediación automática descargando dinámicamente los módulos en riesgo.
+
+   Uso Típico en las empresas:
+   Se utiliza en entornos corporativos, servidores de producción e infraestructura crítica (Fintech, PCI-DSS, ISO 27001) como un control de cumplimiento (compliance check) continuo 
+   dentro de la canalización DevSecOps o mediante tareas programadas de Cron. Resuelve problemas del día a día como la detección temprana de controladores propietarios o maliciosos
+   inyectados en RAM, la mitigación de vectores de ataque por carga arbitraria de módulos en caliente y la limpieza de configuraciones residuales tras actualizaciones del kernel o
+   desinstalación de software, evitando comportamientos erráticos o vulnerabilidades en el sistema operativo.
+
+   Ejemplo de ejecución:
+
+   ```
+   # Otorgar permisos de ejecución
+   chmod +x kernel_security_integrity_auditor.sh
+
+   # Modo Auditoría (Lectura y reporte informativo)
+   sudo ./kernel_security_integrity_auditor.sh
+
+   # Modo Mitigación Estricta (Intenta remover automáticamente los módulos no conformes)
+   sudo ./kernel_security_integrity_auditor.sh --strict
+   ```
+
+   Curiosidad Técnica:
+
+   - /proc/sys/kernel/tainted: Este archivo devuelve una máscara de bits entera que representa el estado de integridad del kernel. Si devuelve 0, el kernel está completamente limpio.
+   Un valor distinto de cero indica banderas de contaminación (por ejemplo, 1 para módulos sin licencia GPL, 8192 para módulos no firmados o 512 para fallos previos en RAM).
+   - modinfo -F license y verificación de signer: La bandera -F (field) extrae únicamente el valor del campo especificado de la cabecera ELF del módulo. El script analiza si el
+   parámetro contiene "GPL" y busca la presencia del parámetro signer para asegurar que el archivo .ko fue compilado con claves criptográficas autorizadas.
+   - /sys/module/<modulo>/taint: Permite leer individualmente la bandera específica que un módulo inyectó al kernel, evitando falsos positivos al aislar únicamente los drivers
+   culpables de alterar la RAM.
+   - mapfile -t modulos < <(lsmod | gawk 'NR>1 {print $1}'): Carga de manera eficiente la primera columna de la salida de lsmod (los nombres de los módulos cargados en RAM)
+   directamente en un arreglo de Bash, omitiendo la cabecera mediante NR>1 y previniendo problemas de word splitting.
+   - Parseo dinámico con gawk: En la fase 02, el script procesa sintácticamente las directivas de configuración (blacklist, options, install, alias) interpretando el índice exacto
+   de la columna según el comando utilizado en los archivos .conf para validar la existencia real del módulo objetivo mediante modinfo.
+   - Uso del grep -rqE "^\s*blacklist\s+${modulo}\b" /etc/modprobe.d/*.conf 2>/dev/null: para que nos imprima todas las lineas que cumplen esa expresion regular usando Globbing en
+   el directorio especificado.
+   - grep -vE '^\s*#|^\s*$' "$ARCHIVO": Para evitar las lineas que sean comentarios y las lineas vacias.
+
+_____________________________________________________________________________________________________________________________________________________________________________________
 
 ## **scsi_storage_auditor.sh**
    Nivel "Avanzado" **Temas:** Subsistema SCSI, Infraestructura de udev, Sistema de archivos Sysfs (`/sys`), Enlaces Persistentes (`/dev/disk/by-id`), Procesamiento de streams (`gawk`).

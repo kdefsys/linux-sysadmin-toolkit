@@ -261,5 +261,6 @@ ________________________________________________________________________________
    * **Estrategia Defensiva de Fallback Automático (`[[ -z ... ]]`):** El script implementa un mecanismo de redundancia industrial en la **Fase 3**. Si por restricciones de permisos 
    en la arquitectura de hardware el modo clásico de lectura de atributos de `udevadm` retorna una cadena vacía, el script lo detecta dinámicamente mediante el flag `-z` y activa 
    un plan de contingencia que extrae los identificadores directamente desde la base de datos de propiedades de entorno con `-q property`.
+   * **/sys/.../removable:** Es la ruta para ver si es un componente fijo(0) o extraible (!=0).
 
 _____________________________________________________________________________________________________________________________________________________________________________________

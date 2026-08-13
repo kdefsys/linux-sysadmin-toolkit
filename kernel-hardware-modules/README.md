@@ -222,6 +222,10 @@ ________________________________________________________________________________
    * Auditoría de enlaces por patrón exacto: En la Fase 3, el filtro de búsqueda utiliza un grep -iE optimizado con anclajes de fin de línea ($) y patrones específicos para 
    particiones: /${NOMBRE}$|/${NOMBRE}p[0-9]|/${NOMBRE}[0-9]. Esto evita falsos positivos (por ejemplo, que al auditar el disco sda se terminen listando los enlaces de un disco 
    llamado sdaa o sdab).
+   * udevadm info -q path -n "${DISPOSITIVO}": Me arroja la ruta en sysfs del dispositivo de bloque.
+   * /sys/.../device/model: Me arroja el modelo del dispositivo.
+   * /sys/.../size: Me arroja la capacidad por sector.
+   * /sys/.../queue/rotationa: Me arroja la naturaleza fisica. ( 0 es SSD y 1 es HHD)
 
 _____________________________________________________________________________________________________________________________________________________________________________________
 

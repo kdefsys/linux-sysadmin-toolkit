@@ -1,73 +1,79 @@
 #!/bin/bash
-###Nombre: scsi_storage_auditor.sh
-###Autor: kdefsys
-###Contexto: En el centro de datos de la empresa, los servidores reciben constantemente nuevas rebanadas de almacenamiento (LUNs) desde una cabina de discos externa (SAN). 
-###El equipo de Ciberseguridad y Operaciones ha detectado que los administradores a veces cometen errores al montar discos basándose en rutas volátiles como /dev/sdb, lo que causa 
-###caídas del sistema tras los reinicios.
-###Descripción: Actúa como una herramienta de auditoria forense y de infraestructura en caliente.
+#### Nombre: scsi_storage_auditor.sh
+### Autor: kdefsys
+### Descripcion: En el centro de datos de la empresa, los servidores Linux están conectados a una red SAN (Storage Area Network) desde la cual reciben constantemente LUNs
+### (Logical Unit Numbers) de almacenamiento presentados desde cabinas externas.
+### El equipo de Auditoría y Ciberoperaciones ha detectado que varios administradores cometen el error de montar o configurar el almacenamiento basándose en nombres de dispositivos
+### tradicionales y volátiles (como /dev/sdb o /dev/sdc). Esto ha provocado incidentes graves de caídas de servicio (outages) tras los reinicios de los servidores, debido a que el
+### orden de inicialización de los discos en el bus SCSI no es determinista y los nombres de bloque pueden cambiar dinámicamente.
+### Este script actua como una herramienta de inspeccion en caliente y audita forense para alamcenaniento SCSI/SAN. El script analiza un dispositivo de bloque especifico ingresado
+### como argumento y genera un reporte tecnico dividido en 3 fases de diagnostico.
 ###Uso: sudo ./scsi_storage_auditor.sh <nombre_dispositivo_bloque>
 
-if [[ "$EUID" -ne 0 ]]; then echo "El script no tiene permiso de superusuario"; exit 1; fi
-if [[ "$#" -ne 1 ]]; then echo "El script no recibe un argumento obligatorio que es el nombre del disco"; exit 1; fi
-
-NOMBRE="$1"
-NOMBRE_DEV="/dev/${1}"
-
-if [[ ! -b "$NOMBRE_DEV" ]]; then echo "El dispositivo no existe en el sistema"; exit 1; fi
-
-echo "[+] INICIANDO AUDITORÍA DE INFRAESTRUCTURA PARA: $NOMBRE"
-echo "----------------------------------------------------"
-#===================================================================================================================
-#FASE 01: EXTRACCIÓN DE LA JERARQUÍA SCSI (HCTL):
-#===================================================================================================================
-
-gawk -v nombre_dispositivo="${NOMBRE_DEV}" '{
-	cadena=$1
-	split(cadena,datos,":")
-	printf "\n[FASE 1: DIRECCIONAMIENTO SCSI (HCTL)]\n"
-	printf " -> Dirección Completa: %s\n", cadena
-	printf "    DISPOSITIVO: %s\n", nombre_dispositivo
-	printf "    HOST ADAPTER SCSI: %s]\n", datos[1]
-	printf "    BUS SCSI: [%s]\n", datos[2]
-	printf "    ID TARGET: [%s]\n", datos[3]
-	printf "    LUN: [%s\n", datos[4]
-	printf "\n\n"
-}' < <(lsscsi | grep -iE "${NOMBRE_DEV}")
-
-#===================================================================================================================
-#FASE 02: INTROSPECCIÓN VIRTUAL EN /sys/devices:
-#===================================================================================================================
-
-RUTA_COMPLETA_EN_SYS=$(udevadm info -q path -n "${NOMBRE_DEV}")
-
-printf "[FASE2: TELEMETRÍA DESDE /SYS (RAM)]\n"
-printf " -> Ruta Sysfs: /sys%s\n" "${RUTA_COMPLETA_EN_SYS}"
-
-if [[ -f "/sys/${RUTA_COMPLETA_EN_SYS}/device/model" ]]; then
-	printf "    Modelo de Fábrica: %s\n" "$(cat /sys${RUTA_COMPLETA_EN_SYS}/device/model 2>/dev/null)"
-else
-	echo "     No contiene modelo"
+if [[ "$EUID" -ne 0 ]]; then
+	echo "El script debe de ejecutarse con privilegios sudo" >&2
+	exit 1
 fi
 
-printf "    Capacidad en Sectores: %s\n" $(cat "/sys${RUTA_COMPLETA_EN_SYS}/size" 2>/dev/null)
-
-if [[ "$(cat /sys${RUTA_COMPLETA_EN_SYS}/queue/rotational 2>/dev/null)" -eq 1 ]]; then
-	printf "    Naturaleza Física: [MECANICO/HDD]\n"
-elif [[ "$(cat /sys${RUTA_COMPLETA_EN_SYS}/queue/rotational 2>/dev/null)" -eq 0 ]]; then
-	printf "    Naturaleza Física: [SSD/FLASH]\n"
-else
-	printf "    Naturaleza Física: [OTRO]\n"
+if [[ "$#" -ne 1 ]]; then
+	echo "El script debe de tener un solo argumento que es el nombre del dispositivo de bloque" >&2
+	exit 1
 fi
 
-echo -e "\n\n"
-#===================================================================================================================
-#FASE 03: DESCUBRIMIENTO DE IDENTIDADES INDESTRUCTIBLES
-#===================================================================================================================
+DISPOSITIVO="/dev/${1}"
 
-printf "[FASE 3: ENLACES PERSISTENTES INMUNE A REINICIOS]\n"
-printf " -> Rutas seguras detectadas en /dev/disk/by-id:\n"
+[[ ! -b "$DISPOSITIVO" ]] && { echo "El argumento no pertenece a un dispositivo de bloque. Saliendo del script" >&2; exit 1; }
 
-ls -l /dev/disk/by-id | grep -iE "/${NOMBRE}" | gawk '{printf "    -/dev/disk/by-id/%s\n", $9}'
+### ---------------------------------------------------------------------------------------------------------
+### 				FASE 01: DIRECCIONAMIENTO JERARQUICO SCSI (HCTL)
+### ---------------------------------------------------------------------------------------------------------
 
-printf "\n-------------------------------------------------------\n"
-printf "[+] Auditoría finalizada con éxito\n"
+gawk -v dispositivo="$DISPOSITIVO" '{
+	split($1,arreglo,":")
+	print "========================================== FASE 01: DIRECCIONAMIENTO JERARQUICO SCSI =========================================="
+	printf "DIRECCION HCTL DEL DISPOSITIVO: %s\n", dispositivo
+	printf "Host Adapter: %s]\n", arreglo[1]
+	printf "Bus/Channel: [%s]\n", arreglo[2]
+	printf "Target ID: [%s]\n", arreglo[3]
+	printf "LUN [%s\n", arreglo[4]
+}' < <(lsscsi 2>/dev/null | grep  "${DISPOSITIVO}")
+
+### ---------------------------------------------------------------------------------------------------------------
+### 			FASE 02: TELEMETRIA DESDE EL SISTEMA DE ARCHIVOS VIRTUAL (/sys)
+### ---------------------------------------------------------------------------------------------------------------
+
+echo "====================================================== TELEMETRIA VIRTUAL CON /sys ==============================================="
+echo "DISPOSITIVO: $DISPOSITIVO"
+echo "=================================================================================================================================="
+
+RUTA_SYS="/sys$(udevadm info -q path -n "$DISPOSITIVO")"
+echo "RUTA EN sys: ${RUTA_SYS}"
+
+if [[ -f "${RUTA_SYS}/device/model" ]]; then
+	MODELO="$(cat "${RUTA_SYS}"/device/model)"
+	echo "MODELO: $MODELO"
+else
+	echo "No tiene Modelo asignado"
+fi
+
+printf "CAPACIDAD EN SECTORES: %s\n" "$(cat "${RUTA_SYS}"/size 2>/dev/null)"
+
+if [[ "$(cat "${RUTA_SYS}"/queue/rotational 2>/dev/null)" -eq 1 ]]; then
+	echo "NATURALEZA FISICA: [MECANICO/HDD]"
+elif [[ "$(cat "${RUTA_SYS}"/queue/rotational 2>/dev/null)" -eq 0 ]]; then
+	echo "NATURALEZA FISICA: [SSD/FLASH]"
+else
+	echo "NATURALEZA FISICA: OTRA"
+fi
+
+### ---------------------------------------------------------------------------------------------------------------------
+### 		FASE 03: DESCUBRIMIENTO DE IDENTIFICADORES PERSISTENTES (Inmunes a Reinicios)
+### ---------------------------------------------------------------------------------------------------------------------
+
+echo "FASE 3: ENLACES PERSISTENTES INMUNE A REINICIOS"
+echo "-> Rutas detectadas en /dev/disk/by-id:"
+
+ls -l /dev/disk/by-id | grep -iE "$1" | gawk '{print "	 -> /dev/disk/by-id/" $9}'
+
+echo "-----------------------------------------------"
+echo "[+] scsi_storage_auditor.sh finalizada con exito."

@@ -12,6 +12,7 @@ CONTENIDO:
 - [kernel_security_integrity_auditor.sh](#kernel_security_integrity_auditorsh)
 - [scsi_storage_auditor.sh](#scsi_storage_auditorsh)
 - [usb_security_guard.sh](#usb_security_guardsh)
+- [pci_network_monitor.sh](#pci_network_monitorsh)
 ____________________________________________________________________________________________________________________________________________________________________________________
 
 ## **kernel_module_auditor.sh**
@@ -264,3 +265,54 @@ ________________________________________________________________________________
    * **/sys/.../removable:** Es la ruta para ver si es un componente fijo(0) o extraible (!=0).
 
 _____________________________________________________________________________________________________________________________________________________________________________________
+
+## **pci_network_monitor.sh**
+   **Nivel "Intermedio/Avanzado"** **Temas:** Linux System Administration, Auditing & Forensics, Network Telemetry, /sys File System interfaces, udevadm.
+
+   Descripcion Técnica:
+   Este script actúa como un sensor de auditoría e inspección física en caliente para interfaces de red en sistemas Linux. Dado el nombre de una interfaz como argumento
+   (por ejemplo, `eth0`, `wlan0`, `enp3s0`), el script examina el subsistema de red del kernel a través del sistema de archivos virtual `/sys/class/net/` para determinar si la
+   tarjeta está conectada mediante un bus PCI/PCIe, un bus USB, o si corresponde a una interfaz virtual (como adaptadores `docker0`, `veth*`, `tun/tap` o `lo`). Para los
+   dispositivos físicos (PCI/USB), realiza un trazado de jerarquía de hardware e invoca la base de datos de `udevadm` para extraer su dirección MAC permanente, la ruta de ubicación
+   física en el bus (dirección BDF o controlador de puerto), el driver/módulo del kernel asignado y los identificadores únicos de fabricante y modelo (Vendor ID y Device/Product ID).
+
+   Uso Tipico en las empresas:
+   En un entorno corporativo o centro de datos, el equipo de Seguridad de la Información (SOC) y Respuesta a Incidentes (DFIR) utiliza este script para la detección de dispositivos
+   de red no autorizados (Rogue Network Devices) que representan vectores de ataque físicos o puentes de fuga de datos (Out-of-Band Management no autorizada).
+   - Detección de puertas traseras físicas: Identificar inmediatamente si un empleado o atacante conectó un adaptador USB Wi-Fi o USB-to-Ethernet para evitar las políticas de
+   firewall y la segmentación de red corporativa.
+   - Inventario de Hardware en Servidores: Validar automáticamente durante auditorías periódicas o mediante tareas cron qué tarjetas de red son nativas integradas en la placa
+   base (PCIe) y cuáles son extraíbles.
+   - Telemetría para SIEM: Generar salidas estandarizadas con la firma de hardware y la dirección MAC real del chip para correlacionar eventos de red con alertas de seguridad física.
+
+   Ejemplo de Ejecucion:
+
+   ```
+   chmod +x pci_network_monitor.sh
+   # Auditoría de una interfaz PCIe física integrada
+   sudo ./pci_network_monitor.sh enp3s0
+   
+   # Auditoría de un adaptador USB Ethernet o Wi-Fi
+   sudo ./pci_network_monitor.sh eth1
+
+   # Inspección de una interfaz virtual
+   sudo ./pci_network_monitor.sh docker0
+
+   ```
+   Curiosidad Técnica:
+   - Resolución de enlaces simbólicos en /sys con readlink -f:
+   Para determinar el bus físico de la tarjeta, el script utiliza readlink -f /sys/class/net/$RED. Esta función resuelve en caliente toda la jerarquía de directorios reales dentro
+   del árbol /sys/devices/. Al aplicar patrones de expresiones regulares (grep -qi "pci" y grep -qi "usb"), el script diferencia si un enlace apunta a la topología de un bus PCI
+   (/sys/devices/pci0000:00/...) o si la interfaz está colgada de la pila de un controlador de host USB (.../usb1/1-2/...).
+   - Identificación del Driver mediante la estructura de /sys:
+   En lugar de ejecutar herramientas externas de espacio de usuario como lspci -k o ethtool, el script obtiene el módulo del kernel activo extrayendo el enlace del directorio del
+   dispositivo con readlink -f /sys/class/net/$RED/device/driver. Al aplicar basename sobre dicha ruta resuelta, obtiene directamente el nombre del driver binario cargado por el
+   kernel (por ejemplo, r8169, iwlwifi o r8152).
+   - Estrategia de Fallback de Telemetría (udevadm + SysFS):
+   Para garantizar la extracción de Vendor ID y Device ID sin importar la marca o el tipo de controlador, el script implementa un mecanismo de doble consulta: intenta leer las
+   propiedades procesadas de udevadm (ID_VENDOR_ID y ID_MODEL_ID) y, si el dispositivo carece de esas entradas en la base de datos de runtime de udev, recurre automáticamente a la
+   lectura directa de los archivos vendor, device e idProduct presentes en el nodo del dispositivo en /sys/class/net/$RED/device/.
+   - Ver la opcion -p en el udevadm para que diferencia que no es una ruta /dev.
+
+_____________________________________________________________________________________________________________________________________________________________________________________
+

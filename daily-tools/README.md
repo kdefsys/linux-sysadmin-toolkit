@@ -17,6 +17,7 @@ prácticas de scripting.
 - [monitor_recursos_umbral.sh](#monitor_recursos_umbralsh)
 - [auditoria_integridad_archivos.sh](#auditoria_integridad_archivossh)
 - [gestion_backups_rotacion.sh](#gestion_backups_rotacionsh)
+- [auditor_binarios_sospechosos.sh](#auditor_binarios_sospechosossh)
 _____________________________________________________________________________
 
 ## Estructura del directorio
@@ -321,3 +322,7 @@ ________________________________________________________________________________
    '{print $2}' | xargs rm -fv
 
 ____________________________________________________________________________________________________________________________________________________________________________________
+
+## **auditor_binarios_sospechosos.sh**
+ 
+

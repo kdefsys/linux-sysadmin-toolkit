@@ -324,5 +324,50 @@ ________________________________________________________________________________
 ____________________________________________________________________________________________________________________________________________________________________________________
 
 ## **auditor_binarios_sospechosos.sh**
- 
+   Nivel Avanzado **Temas:** Hardening y Seguridad Ofensiva/Defensiva, gestión de señales, Bit de permisos especiales (SUID/SGID), Modificadores de Acceso GLobal (world-writable)
+   Control de Descriptores de Archivo (exec 3>), Invocación por Lotes (xargs).
 
+   Descripción Técnica:
+   Este script realiza una auditoría forense preventiva sobre el sistema de archivos analizando ejecutables en un directorio objetivo (por defecto /usr/bin). Clasifica los hallazgos
+   en dos categorías críticas de seguridad: binarios con bits de privilegio elevados activos (SUID o SGID) y archivos ejecutables que permiten escritura universal a cualquier usuario
+   sin privilegios (world-writable). Genera un reporte detallado con marcas de tiempo usando un descriptor de archivo dedicado y activa advertencias inmediatas en la terminal ante
+   riesgos evidentes de escalada de privilegios. Además, incorpora control estricto de privilegios de ejecución (root) e interrupción limpia mediante captura de señales del sistema
+   (SIGINT y SIGTERM).
+
+   Uso Típico en las Empresas:
+   En entornos corporativos, auditorías de cumplimiento normativo (como PCI-DSS, ISO 27001 o SOC 2) y servidores en producción expuestos a múltiples usuarios o servicios web, la mala
+   configuración de permisos representa uno de los vectores de ataque más explotados.
+   - Prevención de escalada de privilegios local (LPE): Evitar que usuarios comprometidos o atacantes modifiquen un binario del sistema para ejecutar código arbitrario con privilegios
+   de root.
+   - Auditoría continua tras despliegues: Comprobar que instaladores automáticos o desarrolladores no hayan dejado binarios con permisos laxos (777 o o+w) por descuido en rutas del
+   sistema.
+   - Respuesta a incidentes y análisis post-intrusión: Identificar rápidamente si un intruso dejó puertas traseras (backdoors) o copias modificadas de binarios esenciales con el bit
+   SUID activo para mantener persistencia.
+
+   Ejemplo de Ejecución:
+
+   ```
+   # Sintaxis: sudo ./auditor_binarios_sospechosos.sh [-d <directorio_objetivo>] [-h]
+
+   # Ejemplo 1: Ejecución estándar sobre el directorio de binarios por defecto (/usr/bin)
+   sudo ./auditor_binarios_sospechosos.sh
+
+   # Ejemplo 2: Auditar un directorio personalizado (ej. scripts o binarios de una app interna)
+   sudo ./auditor_binarios_sospechosos.sh -d /opt/mis_servicios/bin
+   
+   # Ejemplo 3: Consultar el menú de ayuda
+   ./auditor_binarios_sospechosos.sh -h
+
+   ```
+
+   Curiosidad Técnica:
+   - Aislamiento de bits octales en find: La expresión lógica find "$DIRECTORIO" -type f \( -perm -4000 -o -perm -2000 \) emplea el prefijo de guion - antes de la máscara numérica.
+   Esto indica a find que verifique si al menos esos bits específicos están encendidos en el archivo (bit 4000 para SUID y 2000 para SGID), ignorando los bits de lectura, escritura
+   o ejecución restantes.
+   - Paginación segura de argumentos con xargs -d '\n': Pasar rutas de archivos procesadas por un arreglo directamente a stat puede romperse si existen nombres con espacios.
+   El modificador -d '\n' restringe el delimitador a saltos de línea exactos, garantizando que stat -c "%a - %U:%G - %n" interprete cada archivo como un argumento atómico individual
+   sin crear subprocesos innecesarios.
+   - Gestión de señales con trap: La función salida_rapida vinculada a SIGINT (Ctrl+C) y SIGTERM evita la corrupción del archivo de log cerrando limpiamente el descriptor de archivo
+   exec 3>&- si el operador detiene abruptamente el escaneo en directorios masivos.
+
+_____________________________________________________________________________________________________________________________________________________________________________________

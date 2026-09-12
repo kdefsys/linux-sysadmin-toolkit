@@ -93,3 +93,4 @@ else
 fi
 
 echo "auditor_binarios_sospechosos.sh finalizado, puede ver el reporte en $REPORTE"
+echo "Fin del script"

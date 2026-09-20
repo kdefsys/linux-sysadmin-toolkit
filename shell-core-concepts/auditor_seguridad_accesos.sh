@@ -20,8 +20,8 @@ function help {
 
 FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
 UMBRAL=5
-REPORTE="auditoria_seguridad_${FECHA}.log"
 ARCHIVO_LOG=""
+REPORTE="auditoria_seguridad_${FECHA}.log"
 
 while getopts :u:l:h opt; do
 	case "$opt" in

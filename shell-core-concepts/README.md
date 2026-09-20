@@ -52,7 +52,10 @@ _____________________________________________________________________________
    - 'gawk' para comprimir los atributos con un OFS adecuado usando gawk -F "|" 'BEGIN{OFS="\t"}{print $1, $2, $3}'
 
    Ejemplo de Ejecución:
+
+   ```
    ./auditar_archivos_criticos.sh -d <directorio> [-h]
+   ```
 
 _____________________________________________________________________________
 
@@ -205,10 +208,12 @@ ________________________________________________________________________________
 
    Ejemplo de ejecución:
 
+   ```
    chmod u+x log_rote.sh
 
    ./log_rote.sh -d /var/log/myapp -m 7 [-h]
 
+   ```
    Curiosidad Técnica:
    - mapfile -t archivos_logs < <(find ...): Es la forma más eficiente de capturar la salida de un comando en un arreglo. 
    Evita problemas con nombres de archivos que contienen espacios y es mucho más rápido que leer línea por línea en un 
@@ -241,10 +246,12 @@ ________________________________________________________________________________
    del sistema de monitoreo por falta de espacio en disco (Disk Space Low).
 
    Ejemplo de Ejecución:
+   ```
    El script se ejecuta pasando parámetros de forma flexible mediante banderas cortas estándar:
    - Caso 1: Búsqueda avanzada de errores en logs modificados hace menos de 2 días y mayores a 10MB: ./auditoria_unificada_pro.sh -d /var/log/apps -p "FATAL_ERROR" -m 2 -s 10
    - Caso 2: Auditoría general con activación del Modo de Eliminación Segura (-e) para limpiar basura residual: ./auditoria_unificada_pro.sh -d /home/deploy/project -p "exception" -e
    - Caso 3: Control de errores por omisión del argumento obligatorio (-d): ./auditoria_unificada_pro.sh -p "Unauthorized"
+   ```
 
    Curiosidad Técnica:
    La arquitectura interna de este script destaca por tres implementaciones complejas que garantizan rendimiento y orden en producción:
@@ -278,6 +285,7 @@ ________________________________________________________________________________
 
    Ejemplo de Ejecución:
 
+   ```
    Ejecución con valores por defecto (Disco: 80%, RAM: 85%, CPU: 90%)
    ./monitoreo_recursos_alertas.sh
 
@@ -286,6 +294,7 @@ ________________________________________________________________________________
 
    Mostrar la guía de ayuda
    ./monitoreo_recursos_alertas.sh -h
+   ```
 
    Curiosidad Técnica:
    - Cálculo preciso de CPU sin herramientas externas: En lugar de invocar comandos pesados como top o mpstat, la función uso_cpu lee directamente /proc/stat, calcula la suma del

@@ -14,6 +14,7 @@ shell bash, de la línea de comandos y de scripting.
 - [log_rote.sh](#log_rotesh)
 - [auditoria_unificada_pro.sh](#auditoria_unificada_prosh)
 - [monitoreo_recursos_alertas.sh](#monitoreo_recursos_alertassh)
+- [auditor_seguridad_accesos.sh](#auditor_seguridad_accesossh)
 _____________________________________________________________________________
 
 ## **auditar_archivos_criticos.sh**
@@ -296,3 +297,41 @@ ________________________________________________________________________________
    depender del comando sort, resolviendo discrepancias de formato de decimales (puntos vs comas) según la localización del sistema.
 
 ___________________________________________________________________________________________________________________________________________________________________________________
+
+## **auditor_seguridad_accesos.sh**
+   Nivel Intermedio/Avanzado **Temas:** Hardening de Linux, Auditoria de cuentas (/etc/passwd, /etc/shadow), Parsing de logs de autenticacion, Analisis de fuerza bruta SSH, getopts,
+   exec I/O Redirection
+
+   Descripción Técnica:
+   Script de inspección de seguridad local y perimetral. Analiza la base de usuarios locales para identificar configuraciones de alto riesgo (usuarios no root con UID 0, shells
+   interactivas habilitadas y cuentas sin contraseña asignada en /etc/shadow). Adicionalmente, examina el registro de eventos de autenticación (auth.log o secure) extrayendo y
+   cuantificando los fallos de autenticación SSH por dirección IP de origen, filtrando aquellas que superen un umbral configurable (-u). Todo el reporte queda registrado en un log
+   fechado mediante descriptores de archivo independientes (FD 3).
+
+   Uso Típico en las empresas:
+   Utilizado por equipos de SecOps, SysAdmins y auditores de cumplimiento (PCI-DSS, ISO 27001, CIS Benchmarks) en revisiones programadas o rutinas diarias de hardening:
+   - **Detección temprana de intrusiones:** Identifica escaneos y ataques de fuerza bruta hacia el puerto SSH antes de que comprometan credenciales débiles.
+   - **Auditoría de vectores de escalada de privilegios:** Garantiza que atacantes o administradores negligentes no hayan creado puertas traseras con privilegios de superusuario (UID 0)
+   - **Mitigación de cuentas huérfanas:** Detecta usuarios de servicio o empleados dados de baja que quedaron con credenciales vacías o shells accesibles.
+
+   Ejemplo de Ejecución:
+
+   ```
+   # Ejecución estándar con autodetección de log y umbral por defecto (5 intentos)
+   sudo ./auditor_seguridad_accesos.sh
+
+   # Personalizando umbral a 10 fallos y especificando log comprimido/rotado previo
+   sudo ./auditor_seguridad_accesos.sh -u 10 -l /var/log/auth.log.1
+
+   # Desplegar ayuda
+   ./auditor_seguridad_accesos.sh -h
+
+   ```
+   Curiosidades Técnicas:
+   - Parsing dinámico por token de campo en gawk: En lugar de depender de posiciones de columna fijas (que varían según el daemon SSH y la distribución entre Failed password for
+   invalid user... y Failed password for root...), el script itera for (i=1; i <= NF; i++) hasta localizar la palabra clave "from", capturando con seguridad el token inmediato 
+   siguiente $(i+1) como la IP de origen.
+   - Verificación en /etc/shadow: Reconoce que en Linux moderno los hashes nunca residen en /etc/passwd (donde solo se expone x), auditando el segundo campo delimitado por : en
+   /etc/shadow, lo que requiere validar el EUID al inicio para evitar lecturas silenciosamente truncadas por falta de permisos.
+
+_____________________________________________________________________________________________________________________________________________________________________________________

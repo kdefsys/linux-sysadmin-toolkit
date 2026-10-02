@@ -14,6 +14,7 @@ mantenimiento de servidores.
 - [gestor_entornos.sh](#gestor_entornossh)
 - [optimizador_almacenamiento_dedup.sh](#optimizador_almacenamiento_dedupsh)
 - [despliegue_atomico_symlink.sh](#despliegue_atomico_symlinksh)
+- [auditor_seguridad_symlinks.sh](#auditor_seguridad_symlinkssh)
 ________________________________________________________________________________________________
 
 ## **auditar_symlinks_rotos.sh**
@@ -253,6 +254,48 @@ ________________________________________________________________________________
    sed -i "$(( LINEAS - CONTEO + 1 )),\$d" "$HISTORIAL"
    Esta instrucción de sed elimina en caliente las líneas desde la versión consumida hasta el final del archivo. Esto permite realizar múltiples rollbacks consecutivos (v3 ➔ v2 ➔ v1)
    de forma matemáticamente exacta y limpia los registros de versiones que hayan sido eliminadas físicamente del disco.
+
+_____________________________________________________________________________________________________________________________________________________________________________________
+
+## **auditor_seguridad_symlinks.sh**
+   Nivel Avanzado **Temas: ** Bash Scripting, SysAdmin, Ciberseguridad/Threat Hunting, Symlink Poisoning, Inodos, Permisos POSIX, Hard Links y auditoria
+
+   Descripcion Técnica:
+   En entornos multiusuario o servidores expuestos, los enlaces simbólicos y duros pueden ser aprovechados por atacantes para realizar ataques de tipo Symlink Race Condition
+   (Symlink Poisoning) o evasión de restricciones. Este script actúa como una herramienta de auditoría de seguridad y hardening del sistema de archivos.
+   El script analiza un directorio objetivo y realiza las siguientes validaciones críticas:
+   - **Detección de Symlinks Apuntando a Archivos Sensibles (Symlink Poisoning):** Identifica cualquier enlace simbólico creado en directorios accesibles (como /tmp o /var/tmp) que 
+   apunte a archivos críticos del sistema como /etc/passwd, /etc/shadow, /etc/sudoers o claves SSH.
+   - **Auditoría de Hard Links Sospechosos en Binarios/Archivos SUID:** Busca archivos con permisos de ejecución SUID/SGID o archivos críticos que tengan un recuento de enlaces duros
+   (st_nlink) mayor a 1, identificando si un usuario creó un enlace duro hacia un ejecutable del sistema en una ruta no autorizada para eludir restricciones.
+   - **Identificación de Symlinks Cruzados entre Puntos de Montaje (Cross-Device Symlinks):** Detecta enlaces simbólicos que apuntan a través de diferentes particiones o discos
+   montados, alertando sobre posibles desviaciones de tráfico I/O no deseadas.
+
+   Uso Típico en las Empresas:
+   - **Prevención de Escalada de Privilegios:** Evita que usuarios sin privilegios creen symlinks en carpetas temporales compartidas apuntando a archivos de configuración del sistema
+   para forzar a un demonio o tarea cron (que corre como root) a sobrescribir archivos críticos.
+   - **Cumplimiento de Estándares (CIS Benchmarks):** Verifica políticas de seguridad donde ningún binario con flag SUID/SGID debe poseer múltiples enlaces duros dispersos en el
+   sistema de archivos.
+
+   Ejemplo de Ejecución:
+
+   ```
+	Auditoría de seguridad estándar en la ruta de aplicaciones y temporales:
+	./auditor_seguridad_symlinks.sh -d /tmp -r /var/log/auditoria_symlinks.log
+
+	Modo estricto que elimina automáticamente symlinks de Riesgo Alto (apuntando a /etc o /root):
+	./auditor_seguridad_symlinks.sh -d /var/tmp -q -h
+	
+   ```
+
+   Curiosidad Técnica:
+   - **Conteo de inodos y stat -c '%h %i':**
+   Para verificar la presencia de enlaces duros ocultos hacia un archivo sensible, el script no busca el nombre del archivo, sino su métrica st_nlink usando stat -c "%h" "$archivo".
+   Si la cantidad de enlaces es mayor a 1 (> 1), el script utiliza find / -samefile "$archivo" para rastrear dónde más en el disco físico existe una "entrada de directorio"
+   apuntando exactamente al mismo inodo.
+   - **Uso de la opcion -samefile en find:** Para buscar los archivos que apuntan al mismo inodo (al mismo archivo fisico en disco) que un archivo de referencia.
+   - **Uso de stat -c "%d": ** Para retornar el ID del sitema montado
+   - **Uso de test -x {} \; ** Para saber si son ejecutables, es como hacer el if [[ -x "$archivo" ]] 
 
 _____________________________________________________________________________________________________________________________________________________________________________________
 

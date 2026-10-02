@@ -67,7 +67,7 @@ CANTIDAD_ENLACES="${#enlaces[@]}"
 if (( CANTIDAD_ENLACES == 0 )); then
 	echo "No existen enlaces symbolicos en este directorio" >&3
 else
-	if [[ "$ESTRICTO" == "NO ]]; then
+	if [[ "$ESTRICTO" == "NO" ]]; then
 		echo "No se activo la bandera de cuarentena, asi que solo habra un reporte" >&3
 	else
 		echo "Se activo la bandera de cuarentena, asi que si haremos la eliminacion" >&3

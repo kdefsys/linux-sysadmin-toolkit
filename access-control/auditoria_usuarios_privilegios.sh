@@ -32,11 +32,11 @@ function seguridad_cuenta {
 	fi
 
 	if [[ "$uid" -eq 0 && "$name" != "root" ]]; then
-		estado_cuenta="[CRITICO] El usuario no es root y tiene permisos de superusuario"
+		estado_cuenta="$estado_cuenta ------ [CRITICO] El usuario no es root y tiene permisos de superusuario"
 	elif [[ -z "$contraseña" ]]; then
-		estado_cuenta="[CRITICO] La contraseña esta vacia"
+		estado_cuenta="$estado_cuenta ------ [CRITICO] La contraseña esta vacia"
 	elif [[ "$contraseña" =~ ^(!|\*) ]]; then
-		estado_cuenta="Contraseña bloqueada"
+		estado_cuenta="$estado_cuenta ------ Contraseña bloqueada"
 	else
 		estado_cuenta="[OK]"
 	fi
@@ -47,9 +47,9 @@ function seguridad_de_configuracion {
 	local ruta_home="$2"
 	local -n estado_configuracion="$3"
 	if [[ ! -e "$ruta_shell" ]]; then
-		estado_configuracion="SOSPECHOSO (shell no existente)."
+		estado_configuracion="$estado_configuracion ------ SOSPECHOSO (shell no existente)."
 	elif [[ ! -d "$ruta_home" ]]; then
-		estado_configuracion="SOSPECHOSO (home no existente)."
+		estado_configuracion="$estado_configuracion ------ SOSPECHOSO (home no existente)."
 	else
 		estado_configuracion="BIEN"
 	fi

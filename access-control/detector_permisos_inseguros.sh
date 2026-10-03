@@ -90,30 +90,31 @@ function auditoria_de_directorios_criticos {
 
 	for directorio in "${DIRECTORIOS_ESPECIALES[@]}"; do
 		if [[ -k "$directorio" ]]; then
-			echo "[OK] El directorio $directorio de la lista DIRECTORIOS ESPECIALES si tiene el STICKY BIT activado"
+			echo "[OK] El directorio $directorio de la lista DIRECTORIOS ESPECIALES si tiene el STICKY BIT activado" >&3
 		else
-			echo "[CRITICO] El directorio $directorio de la lista de DIRECTORIOS ESPECIALES no tiene el STICKY BIT activado"
+			echo "[CRITICO] El directorio $directorio de la lista de DIRECTORIOS ESPECIALES no tiene el STICKY BIT activado" >&3
 		fi
 	done
 }
 
 function correcion_interactiva {
-	echo "================================================================================"
+	echo "================================================================================" >&3
 	echo "CORRECION INTERACTIVA"
-	echo "================================================================================"
+	echo "================================================================================" >&3
 
 	local ruta_directorio="$1"
 	if [[ -k "$ruta_directorio" ]]; then
-		echo "El directorio $ruta_directorio tiene el sticky bit activado, esta seguro"
+		echo "El directorio $ruta_directorio tiene el sticky bit activado, esta seguro" >&3
 	else
-		echo "El directorio $ruta_directorio no tiene el sticky bit activado"
+		echo "El directorio $ruta_directorio no tiene el sticky bit activado" >&3
 		read -p "Desea activarlo? (S|N): " op
 		case "$op" in
 			s|S)
+				echo "Se activo la opcion para activar el sticky bit" >&3
 				if chmod +t "$ruta_directorio" 2>/dev/null; then
-					echo "Ahora el directorio $ruta_directorio tiene activado el sticky bit"
+					echo "Ahora el directorio $ruta_directorio tiene activado el sticky bit" >&3
 				else
-					echo "No se pudo activar el sticky bit del directorio $ruta_directorio"
+					echo "No se pudo activar el sticky bit del directorio $ruta_directorio" >&3
 				fi
 				;;
 			*)

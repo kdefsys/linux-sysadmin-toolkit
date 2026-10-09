@@ -18,6 +18,7 @@ Los scripts generan logs detallados con información útil para **auditorías de
 - [auditor_de_integridad.sh](#auditor_de_integridadsh)
 - [quarantine_and_lockdown.sh](#quarantine_and_lockdownsh)
 - [access_guard.sh](#access_guardsh)
+- [project_jailor.sh](#project_jailorsh)
 
 -------------------------------------------------------------------------------------------------------------
 
@@ -310,5 +311,52 @@ ________________________________________________________________________________
    	   La bandera -d (Default) define una regla de ACL predeterminada únicamente a nivel de carpeta. Esto funciona como una "plantilla de herencia": cualquier nuevo archivo o
    	   subdirectorio que un usuario cree dentro de esa carpeta en el futuro heredará automáticamente la regla u:usuario:r-x, evitando que el administrador tenga que reejecutar
    	   el script cada vez que se agreguen archivos.
+
+_____________________________________________________________________________________________________________________________________________________________________________________
+
+
+## **project_jailor.sh**
+   Nivel "Intermedio/Avanzado" **Temas: ** System Hardening, Attributes Control (`chattr`/`lsattr`), Sticky bit, POSIX Permissions, Enterprise Project Isolation
+
+   Descripción Técnica:
+   `project_jailor.sh` es una herramienta automatizada para la administración segura del ciclo de vida de proyectos en entornos Linux multiusuario. Su objetivo principal es 
+   aprovisionar directorios de trabajo aislados con políticas de **Least Privilege** mediante el bit especial **Sticky Bit (`+t`)** y permisos estricto octales (`770`). Asimismo,
+   implementa controles de integridad mediante la activación y revocación del atributo **inmutable (`+i`/`-i`)** sobre archivos críticos, y cuenta con un módulo de auditoría capaz de
+   detectar archivos con atributos especiales o permisos riesgosos asignados a la categoría "otros" (world-accessible).
+
+   Uso Típico en las empresas:
+   En entornos corporativos donde colaboran múltiples equipos de desarrollo, DevOps y auditoría, es habitual que los desarrolladores creen archivos compartidos sin ajustar la mascara
+   de permisos (`umask`), dejando configuraciones o llaves expuestas a cualquier usuario del servidor. Además, existe el riesgo constante de borrado accidental o malicioso de archivos
+   de registros (`logs`) o variables de entorno (`.env`).
+   1. Aprovisionar automáticamente carpetas de proyecto compartidas donde los miembros pueden crear y editar sus archivos pero no eliminar los de sus compañeros.
+   2. Congelar archivos de producción críticos (licencias, claves API, configs) para que ningún usuario (ni siquiera `root` por error) pueda modificarlos o borralos.
+   3. Auditar periódicamente la estructura del proyecto en busca de inconsistencias de seguridad antes de los pases a producción.
+
+   Ejemplo de Ejecución:
+   ```
+   # 1. Módulo de Creación: Aprovisionar directorio de proyecto 'alpha' para el grupo 'devops'
+   sudo ./project_jailor.sh -p alpha -g devops
+
+   # 2. Módulo de Protección: Hacer inmutable un archivo crítico de configuración
+   sudo ./project_jailor.sh -i /srv/projects/alpha/config.json
+
+   # 3. Módulo de Liberación: Descongelar el archivo para realizar mantenimiento autorizado
+   sudo ./project_jailor.sh -u /srv/projects/alpha/config.json
+
+   # 4. Módulo de Auditoría: Escanear inmutabilidad y permisos riesgosos en el directorio
+   sudo ./project_jailor.sh -a /srv/projects/alpha
+
+   ```
+
+   Curiosidades Técnicas:
+   - **Uso del comando chattr con las opciones `+i` y `-i`:** Para habilitar y deshabilitar respectivamente el atributo inmutable
+   A diferencia de retirar permisos de escritura con chmod 444, el atributo inmutable +i actua directamente a nivel de VFS (Virtual File System) e inodes en ext4/xfs. Un archivo
+   inmutable no puede ser modificado, eliminado, renombrado ni vinculado simbólicamente por ningún usuario del sistema, incluido root, previniendo ataques de escalada de privilegios
+   o destrucción de evidencias.
+   - **find ... -exec lsattr {} + | gawk '$1 ~ /i/':** La bandera -exec ... + pasa múltiples rutas a la vez a lsattr para minimizar el overhead de procesos. Dado que lsattr no devuelve
+   un código de error cuando un archivo no es inmutable (ambos retornan exit code 0), se canaliza la salida estándar hacia gawk para analizar la cadena de bits de la primera columna
+   ($1) y filtrar únicamente los archivos que contengan la bandera i.
+   - **Validación mediante -k: **En Bash, el operador unario [[ -k $DIRECTORIO ]] comprueba específicamente si el Sticky Bit está activo sobre un directorio sin necesidad de parsear
+   la salida de stat o ls -ld.
 
 _____________________________________________________________________________________________________________________________________________________________________________________

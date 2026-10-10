@@ -15,6 +15,7 @@ entornos productivos.
 - [mapeo_jerarquico.sh](#mapeo_jerarquicosh)
 - [anti_mutation_watchdog.sh](#anti_mutation_watchdogsh)
 - [process_resource_governor.sh](#process_resource_governorsh)
+- [thread_leak_watchdog.sh](#thread_leak_watchdogsh)
 _____________________________________________________________________________
 
 ## **detectar_procesos_zombie.sh**
@@ -249,5 +250,35 @@ ________________________________________________________________________________
    penalizaciones con la variable $VARIACIONES), limpia el descriptor de archivo (exec 3>&-) y cierra el programa de manera íntegra y elegante.
    5. El uso de kill -0 "$p" para reiniciar si el proceso finalizo antes de los 4 segundos.
    6. Uso de bc -l para operar numeros decimales
+
+_____________________________________________________________________________________________________________________________________________________________________________________
+
+## **thread_leak_watchdog.sh**
+   Nivel Avanzado **Temas: ** Monitoreo continuo de procesos, control de hilos (NLWP), gestion de listas blancas, redireccion de descriptores de archivos, manejo de señales y
+   analisis de severidad dinámica.
+
+   Descripción Técnica:
+   Este script en Bash funciona como un demonio o vigilante de procesos especializado en la concurrencia de hilos. Su objetivo principal es inspeccionar de forma iterativa y en
+   tiempo real la tabla de procesos del sistema operativo, extrayendo la cantidad de hilos activos (`NLWP` o Number of Light Weight Processes) de cada proceso en ejecución. Filtra
+   automáticamente hilos internos del kernel, procesos del propio script y entradas exentas mediante un archivo de lista blanca. Evalúa el consumo de hilos frente a un umbral
+   configurable por el usuario, clasificando cada hallazgo en niveles de severidad `(OK, OBSERVACION o CRITICO)`, y registra un reporte detallado en un archivo de auditoría 
+   utilizando descriptores de archivos avanzados.
+
+   Uso Típico en las empresas:
+   En entornos de servidores de producción de alto rendimiento (como clústeres de microservicios, servidores web multiusuario, aplicaciones empresariales en contenedores o bases de
+   datos), las fugas de hilos (thread leaks) provocadas por fallas de programación o saturación de peticiones pueden agotar por completo los límites del kernel 
+   `(kernel.threads-max o max user processes).` Una empresa utilizaría este script en servidores críticos para detectar de manera temprana aplicaciones que desborden su concurrencia
+   de hilos antes de que provoquen la caída total del sistema, bloqueos de acceso por SSH o la denegación de servicio a otras aplicaciones corporativas.
+
+   Ejemplo de ejecución:
+
+   ```
+   sudo ./thread_leak_watchdog.sh -t 150 -d /var/log/security -f /etc/sec/whitelist_pids.txt
+
+   ```
+
+   Curiosidades Técnicas:
+   - Usamos la opcion en la lista llamada nlwp: Para saber cuantos hilos acciona ese proceso en particular
+   - La opcion -w en grep, para que sea la palabra exacta y no .*patron.*
 
 _____________________________________________________________________________________________________________________________________________________________________________________

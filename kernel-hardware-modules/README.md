@@ -13,6 +13,7 @@ CONTENIDO:
 - [scsi_storage_auditor.sh](#scsi_storage_auditorsh)
 - [usb_security_guard.sh](#usb_security_guardsh)
 - [pci_network_monitor.sh](#pci_network_monitorsh)
+- [sysfs_power_state_auditor.sh](#sysfs_power_state_auditorsh)
 ____________________________________________________________________________________________________________________________________________________________________________________
 
 ## **kernel_module_auditor.sh**
@@ -316,3 +317,50 @@ ________________________________________________________________________________
 
 _____________________________________________________________________________________________________________________________________________________________________________________
 
+## **sysfs_power_state_auditor.sh**
+   Nivel "Intermedio/Avanzado" **Temas: ** Linux Kernel Telemetry, Power Management Policies, Block Device Introspection, SysFS Architecture, I/O Scheduler Analysis
+
+   Descripción Técnica:
+   Este script actúa como un auditor especializado en la eficiencia energética y el rendimiento de los dispositivos de almacenamiento en sistemas Linux. A partir del nombre de un
+   dispositivo de bloque pasado como argumento (por ejemplo, sda, sdb, o nvme0n1), el script resuelve dinámicamente su ruta física en el árbol del kernel utilizando udevadm y 
+   explora el sistema de archivos virtual /sys. Su objetivo principal es extraer en caliente la telemetría de bajo nivel sobre las directivas de administración de energía 
+   (Runtime Power Management), el planificador de I/O (I/O Scheduler) activo y los tiempos acumulados de actividad, emitiendo un diagnóstico sobre si el hardware está optimizado
+   para entornos de alta disponibilidad o si corre riesgo de generar latencias imprevistas.
+
+   Uso Típico en las Empresas:
+   En centros de datos empresariales y arquitecturas de servidores de alta densidad, este script es utilizado por los equipos de Ingeniería de Infraestructura y Operaciones de
+   Sistemas para validar perfiles energéticos antes de desplegar cargas de producción críticas (como clústeres de bases de datos o sistemas de archivos de gran volumen).
+
+   Resuelve problemas cotidianos como:
+   - **Prevención de latencias por ahorro energético: **Detectar si discos SSD o NVMe se encuentran configurados bajo políticas de suspensión dinámica (auto-suspend), lo cual 
+   introduce retrasos catastróficos (spin-up latency) en las transacciones de bases de datos.
+   - **Auditoría de rendimiento de colas: **Verificar de forma estandarizada qué planificador de I/O (scheduler) está gobernando las solicitudes de lectura y escritura del
+   almacenamiento.
+   - **Optimización térmica y de desgaste: **Garantizar que los perfiles energéticos de los racks de servidores cumplan con los estándares corporativos de rendimiento constante y
+   estabilidad operativa.
+
+   Ejemplo de Ejecución:
+
+   ```
+   chmod +x sysfs_power_state_auditor.sh
+
+   # Auditar un disco duro SATA o SSD tradicional
+   sudo ./sysfs_power_state_auditor.sh sda
+
+   # Auditar un disco de estado sólido de alta velocidad NVMe
+   sudo ./sysfs_power_state_auditor.sh nvme0n1
+
+   ```
+
+   Curiosidades Téncicas:
+   - **Mapeo dinámico de rutas físicas con udevadm:**
+   En lugar de asumir rutas estáticas en /sys/block/, el script ejecuta udevadm info -q path -n "$DISPOSITIVO". Esta instrucción le permite al kernel retornar la ruta lógica exacta
+   del dispositivo dentro del bus y concatenarla con /sys, asegurando que el script funcione de manera idéntica sin importar si se trata de un controlador SCSI clásico, un
+   dispositivo USB montado como bloque o un disco NVMe de última generación.
+   - **Introspección profunda de atributos de energía en la RAM (/sys/power/control):**
+   El script realiza una verificación condicional dual consultando tanto la ruta directa del nodo como el subdirectorio físico /device/power/control. Esto extrae los valores
+   literales del kernel (on o auto), permitiendo evaluar en tiempo real si el bus de control del dispositivo permite o prohíbe estados de bajo consumo energético a nivel de hardware.
+   - **Introspeccion de I/O:**
+   Uso de la ruta "${RUTA_SYS}/queue/scheduler" el cual nos retorna el algoritmo que se usa para leer y escribir datos en el dispositivo de bloque.
+
+_____________________________________________________________________________________________________________________________________________________________________________________

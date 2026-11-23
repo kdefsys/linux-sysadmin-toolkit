@@ -42,6 +42,7 @@ _____________________________________________________________________________
   Curiosidad Técnica:
   - El archivo de log se genera en el mismo directorio que el script, pero puede
   modificarse para rutas absolutas o directorios centralizados de logs.
+  - Uso de los descriptores de archivos con exec
  
 _____________________________________________________________________________
 

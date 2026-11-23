@@ -16,6 +16,7 @@ while getopts :h opt; do
 	case "$opt" in
 		h)
 		  help
+		  exit 0
 		  ;;
 		*)
 		  echo "Opcion ingresada no valida"

@@ -1,18 +1,40 @@
 #!/bin/bash
 ### Nombre: registro_diario.sh
 ### Autor: kdefsys
-### Registra la fecha y actividad diaria en un log
+### Descripcion: Este script automatiza el registro de una tarea completada junto con la marca de tiempo
+### exacta del momento de ejecucion en un archivo de registro (log)
 ### Uso: ./registro_diario.sh
 
-LOG_FILE="actividad_diaria.log"
-FECHA=$(date '+%Y/%m/%d %H:%M:%S')
+function help {
+	echo "Uso del script: ./registro_diario.sh [-h]"
+	echo -e "Descripcion: Este script automatiza el registro de una tarea completada junto con la marca de tiempo exacta"
+	echo -e "del momento de ejecucion en un archivo de registro (log)\n"
+	echo "   -h: Muestra esta guía"
+}
 
-echo "$FECHA - Tarea completada" >> "$LOG_FILE"
-echo "Registro agregado a $LOG_FILE"
+while getopts :h opt; do
+	case "$opt" in
+		h)
+		  help
+		  ;;
+		*)
+		  echo "Opcion ingresada no valida"
+		  help
+		  exit 1
+		  ;;
+	esac
+done
 
-# Imprimimos el contenido actualizado de actividad_diaria.log
+REGISTRO="actividad_diaria.log"
+FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
+exec 3>>"$REGISTRO"
 
-cat actividad_diaria.log
+printf "%s - Tarea Completada\n" "$FECHA" >&3
 
+echo "El registro fue completado en el archivo $REGISTRO"
+echo "============================================= RESUMEN ==========================================="
+echo "El contenido del registro es:"
+echo -e "=================================================================================================\n"
 
-
+exec 3>&-
+cat "$REGISTRO"

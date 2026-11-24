@@ -93,8 +93,9 @@ _____________________________________________________________________________
    Curiosidad Técnica:
    - El uso de ! es equivalente a -not y en este caso junto con test -e, permite
    filtrar enlaces rotos de forma eficiente.
-   - 'readlink "$enlace" ' nos ayuda a saber a que ruta apuntaba nuestro enlace simbólico,
+   - 'readlink -f "$enlace" ' nos ayuda a saber a que ruta apuntaba nuestro enlace simbólico,
    asi se haya eliminado, queda guardado y el readlink lo saca a relucir.
+   - Uso de read -n1 (para solo introducir un caracter) y -p (para introducir un mensaje)
 
 _____________________________________________________________________________
 

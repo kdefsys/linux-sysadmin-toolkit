@@ -162,7 +162,7 @@ _____________________________________________________________________________
    este comando gawk -F : '$7~/^\/bin\/bash/{print $1}'
    - Maneja archivos temporales para consolidar información y luego los elimina,
    evitando saturar el sistema con logs innecesarios
-   - Usa find ! -perm -g=s para identificar archivos que no cumplen con
+   - Usa find ! -perm -g=r para identificar archivos que no cumplen con
    permisos de grupo, una técnica profesional común en auditorías de seguridad
    - Usamos el printf "%s\n" "${array[@]}" para que así en el printf aparezca el contenido
    del arreglo construido con mapfile -t.

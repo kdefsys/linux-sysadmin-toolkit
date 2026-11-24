@@ -234,13 +234,14 @@ ________________________________________________________________________________
    Curiosidad Técnica:
    - Descriptores de Archivo (exec 3>> ): En lugar de abrir y cerrar el log en cada linea de código
    el script abre un "canal" dedicado(el número 3) que permanece abierto hasta el final, optimizando
-   el rendimiento de entrada/salida (I/O).
+   el rendimiento de entrada/salida (I/O).	
    - El uso de /proc/stat para sacar el consumo de CPU con los campos, user, nice, system, idle, iowait, irq,
    softirq, steal.
+   - EL uso de read -r _ ... _: Esos guiones abajos es para que el valor no se guarde en ninguna variable
+   - sleep 1: Da un descanso de 1 segundo, hace que actue como un mini daemon
    - El uso de /proc/meminfo para sacar el consumo de Memoria RAM. Usando los registros de MemTotal y MemAvailable
 
    Salida de Ejemplo:
-   ==========REPORTE: '2026-04-19 19:30:05'==========
    [ALERTA RAM] Uso actual: 85% (Limite: 70%)
    root      1245  15.2  35.5  Ss   /usr/bin/python3_app
    mysql     950   5.5   20.1  Sl   /usr/sbin/mysqld

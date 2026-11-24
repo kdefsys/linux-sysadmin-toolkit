@@ -127,8 +127,8 @@ _____________________________________________________________________________
    archivos de manera eficinete.
    - 'find' para localizar todos los .log en el directorio dado.
    - 'sort | uniq' para eliminar entradas duplicadas dentro de cada log.
-   - 'sort -nr | head -n 10' para generar un top 10 entradas más frecuentes.
-
+   - 'sort -k1,1nr | head -n 10' para generar un top 10 entradas más frecuentes.
+   - uso de printf "%s\0" "$..." | xargs -0 cat
 _____________________________________________________________________________
 
 ## **control_usuarios_permisos.sh**

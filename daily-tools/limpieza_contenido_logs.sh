@@ -5,60 +5,63 @@
 ###consecutivas o repetidas y genera un reporte consolidando que incluya un análisis del top10 de entradas más frecuentes
 ###Uso: ./limpieza_contenido_logs.sh -d <directorio> -h [help]
 
-OPERACION="NO"
+## =======================================
+## 		FUNCION HELP
+## =======================================
 
 function help {
-	echo "Uso: $0 -d <directorio> [-h]"
-        echo "  -d: Directorio objetivo a buscar los archivos .log"
-        echo "  -h: Muestra esta ayuda"
-        exit 0
+	echo "El script debe de ejecutarse asi: ./limpieza_contenido_logs.sh -d <directorio> [-h]"
+	echo "Descripcion: Recorre el directorio objetivo en busca de archivos de registro con extension .log,"
+	echo "consolida su contenido en un archivo de reporte y añade al final un analisis de las 10 lineas o entradas mas "
+	echo "frecuentes, mostrando el resultado completo en pantalla"
+	echo "   -d <directorio>: Directorio objetivo"
+	echo "   -h : Imprime esta guia"
 }
 
+DIRECTORIO="$(pwd)"
 
 while getopts :d:h opt; do
 	case "$opt" in
 		d)
 		  DIRECTORIO="$OPTARG"
-		  if [[ ! -d "$DIRECTORIO" ]]; then DIRECTORIO="$(pwd)"; fi
-		  OPERACION="SI"
+		  if [[ ! -d "$DIRECTORIO" ]]; then
+			echo "El directorio ingresado no existe. Saliendo del script" >&2
+			exit 1
+		  fi
 		  ;;
 		h)
 		  help
+		  exit 0
 		  ;;
 		*)
-		  echo "Opción Inválida"
+		  echo "Opcion ingresada no valida" >&2
+		  help
 		  exit 1
 		  ;;
 	esac
 done
 
-if [[ "$OPERACION" == "SI" ]]; then
-	REPORTE="log_limpio.txt"
-	FECHA=$(date '+%Y-%m-%d %H:%M:%S')
-
-	exec 3>"$REPORTE"
-
-	echo "============Limpieza de logs ejecutada: $FECHA=========" >&3
-	mapfile -t archivos_logs < <(find "$DIRECTORIO" -type f -name "*.log")
-
-	if [[ "${#archivos_logs[@]}" -eq 0 ]]; then
-		echo "No hay ningun archivo .log dentro del directorio objetivo: $DIRECTORIO"
-		exec 3>&-
-		rm -f "$REPORTE"
-		exit 0
-	fi
-
-	##Ponemos todo el contenido de todos los archivos en un solo archivo
-	for archivo in "${archivos_logs[@]}"; do
-		[[ -f "$archivo" ]] && cat "$archivo" >&3
-	done
-	exec 3>&-
-	echo -e "\n====== Top 10 entradas más frecuentes ========" >> "$REPORTE"
-	grep -v "====" "$REPORTE" | sort | uniq -c | sort -k 1nr,1nr | head -n 10 >> "$REPORTE"
-
-	cat "$REPORTE"
-else
-	echo "No se introdujo la opcion -d"
-	echo "Ejecutar así: $0 -d <directorio>"
-	exit 1
+mapfile -t archivos_log < <(find "$DIRECTORIO" -type f -name "*.log")
+CANTIDAD="${#archivos_log[@]}"
+if (( CANTIDAD == 0 )); then
+	echo "No existen archivos .log dentro del directorio objetivo $DIRECTORIO"
+	exit 0
 fi
+
+REPORTE="log_limpio.txt"
+FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
+
+echo "==================================== LIMPIEZA CONTENIDO DE LOGS =====================================" > "$REPORTE"
+echo "=SCRIPT: limpieza_contenido_logs.sh" >> "$REPORTE"
+echo "=HOSTNAME: $HOSTNAME" >> "$REPORTE"
+echo "=FECHA: $FECHA" >> "$REPORTE"
+echo "=====================================================================================================" >> "$REPORTE"
+
+printf "%s\0" "${archivos_log[@]}" | xargs -0 cat >> "$REPORTE"
+
+echo "=====================================================================================================" >> "$REPORTE"
+echo "== Las 10 entradas mas frecuentes son: " >> "$REPORTE"
+
+cat "$REPORTE" | grep -v "^=" | sort | uniq -c | sort -k1,1nr | head -n 10 >> "$REPORTE"
+
+echo "El script finalizo con exito. Ver el reporte en: $REPORTE"

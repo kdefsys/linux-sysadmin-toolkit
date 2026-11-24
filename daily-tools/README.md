@@ -285,16 +285,13 @@ ________________________________________________________________________________
    2. Verificar el directorio tiempo después para auditar alteraciones: ./auditoria_integridad.sh -d /home/kdefsys/proyectos -v -f /home/kdefsys/firmas/auditoria.db
 
    Curiosidad Técnica:
-   - Filtro de nombres con espacios (gawk '{ $1=""; print substr($0,2) }'): Por defecto, la salida de sha256sum entrega la estructura HASH  RUTA_DEL_ARCHIVO. Un awk '{print $2}' 
-   convencional fallaría estrepitosamente si el nombre de la ruta contiene espacios (solo tomaría la primera palabra). Con $1="", el script vacía el primer campo (el hash) y 
-   substr($0, 2) extrae la línea restante a partir del segundo carácter, conservando intacto el nombre completo del archivo con todos sus espacios.
-   - Comparación limpia por conjuntos (comm -23 y comm -13): El comando comm requiere que los archivos estén previamente ordenados (sort). Al usar la bandera -23, compara el snapshot 
-   nuevo contra el viejo e imprime únicamente las líneas presentes en el primero pero ausentes en el segundo (archivos nuevos o modificados). De forma inversa, -13 extrae los 
-   archivos que existían en el viejo pero no en el nuevo (archivos eliminados).
-   - Búsqueda literal en modo silencioso (grep -Fq "$file" ...): Para saber si un archivo en conflicto fue modificado o creado, el script busca la ruta en la base antigua. 
-   La opción -F (Fixed Strings) le indica a grep que trate el nombre del archivo como una cadena de texto puro (evitando que puntos o caracteres especiales en las rutas se 
-   interpreten como expresiones regulares). La opción -q (Quiet) suprime la impresión en pantalla y retorna inmediatamente un código de estado 0 (éxito) o 1 (fallo), optimizando al 
-   máximo el rendimiento dentro de las condicionales if.
+   - Uso de sha256sum para sacar la criptografia
+   - Uso de las opcions -F -x -- en grep: -F (para que tome la cadena literalmente), -x para que toda la linea sea igual a esa, -- para
+   que no considere si hay un - al incio de la cadena
+   - Uso avanzado de gawk con -v archivo=... : para meter una variable al gawk
+   - Para que el ultimo ya sea un archivo o un comando que tenga espacios se lea correctamente, asumamos que sea $n
+   hacemos:
+   $n=""; for(i=n;i<=NF;++i) $n = $n (i==n ? "" : " ") $n; dentro del gawk
 ___________________________________________________________________________________________________________________________________________________________________________________
 
 ## **gestion_backups_rotacion.sh**

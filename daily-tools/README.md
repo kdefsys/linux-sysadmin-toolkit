@@ -318,9 +318,10 @@ ________________________________________________________________________________
    Curiosidad Técnica:
    - Preservación del contexto con tar -C: Al ejecutar tar -czf "$ARCHIVO" -C "$ORIGEN" ., la opción -C le dice a tar que se mueva temporalmente a la carpeta origen antes de 
    empaquetar. Esto evita que el archivo .tar.gz guarde rutas absolutas molestas (como /var/www/html/file.txt) y comprima únicamente la estructura interna del directorio.
-   - Rotación quirúrgica con tuberías en Unix: La línea de limpieza: stat -c "%W|%n" "${files_backups[@]}" | sort -t "|" -k 1n,1n | head -n "$CANTIDAD_A_ELIMINAR" | gawk -F "|" 
-   '{print $2}' | xargs rm -fv
-
+   - Rotacion quirurjica con: printf "%s\0" "${files_comprimidos[@]}" | xargs -0 stat -c "%Y|%n" \
+   | gawk -F "|" '{$2="";for(i=2;i<=NF;i++) $2 = $2 (i==2?"":" ") $i; printf "%s|%s\n" $1, $2}' | sort -t "|" -k1,1n \
+   | head -n "$SOBRA" | gawk -F "|" '{printf "%s\0", $2}' | xargs -0 rm -fv 2>/dev/null
+   para hacer un buen filtro.
 ____________________________________________________________________________________________________________________________________________________________________________________
 
 ## **auditor_binarios_sospechosos.sh**

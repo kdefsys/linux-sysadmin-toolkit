@@ -49,7 +49,7 @@ _____________________________________________________________________________
    - 'stat -c '%s|%y|%n' para obtener múltiples atributos del archivo en una sola
    llamada
    - date para trabajar con timestamps Unix
-   - 'gawk' para comprimir los atributos con un OFS adecuado usando gawk -F "|" 'BEGIN{OFS="\t"}{print $1, $2, $3}'
+   - 'gawk' para comprimir los atributos con un OFS adecuado usando gawk -F "|" 'BEGIN{OFS="\t"}
 
    Ejemplo de Ejecución:
 

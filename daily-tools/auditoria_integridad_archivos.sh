@@ -45,20 +45,20 @@ function verificacion {
 	mapfile -t archivos_nuevos < <(find "$origen" -type f -exec sha256sum {} + 2>/dev/null)
 	CANTIDAD="${#archivos_nuevos[@]}"
 	if (( CANTIDAD == 0 )); then
-		cat "$ruta_snapshot" | gawk '{$2=""; for(i=2;i<=NF;i++) $2 = $2 ( i==2 ? "" : " ") $i; print $2}' >> "${destino}/eliminados.log"
+		cat "$ruta_snapshot" | gawk '{r=""; for(i=2;i<=NF;i++) r=( i==2 ? "" : r " ") $i; print r}' >> "${destino}/eliminados.log"
 	else
 		for string in "${archivos_nuevos[@]}"; do
-			file_nuevo="$(echo "$string" | gawk '{$2=""; for(i=2;i<=NF;i++) $2 = $2 ( i==2 ? "" : " ") $i; print $2}')"
+			file_nuevo="$(echo "$string" | gawk '{r=""; for(i=2;i<=NF;i++) r=( i==2 ? "" : r " ") $i; print r}')"
 			cripto_nuevo="$(echo "$string" | gawk '{print $1}')"
 			#verificamos si fue creado o modificado
-			presente="$(gawk '{$2=""; for(i=2;i<=NF;i++) $2 = $2 ( i==2 ? "" : " ") $i; print $2}' "${ruta_snapshot}" \
+			presente="$(gawk '{ruta=""; for(i=2;i<=NF;i++) ruta=( i==2 ? "" : ruta " ") $i; print ruta}' "${ruta_snapshot}" \
 				| grep -Fx -- "${file_nuevo}")"
 			if [[ -z "$presente" ]]; then
 				echo "$file_nuevo" >> "${destino}/creados.log"
 			else
 				cripto_antiguo="$(gawk -v archivo="${file_nuevo}" '{
-					$2=""; for(i=2;i<=NF;i++) $2 = $2 ( i==2 ? "" : " ") $i;
-					if ( $2 == archivo ){ print $1; exit }
+					ruta=""; for(i=2;i<=NF;i++) ruta=( i==2 ? "" : ruta " ") $i;
+					if ( ruta == archivo ){ print $1; exit }
 				}' "${ruta_snapshot}")"
 				if [[ "$cripto_antiguo" != "$cripto_nuevo" ]]; then
 					echo "$file_nuevo" >> "${destino}/modificados.log"
@@ -68,11 +68,11 @@ function verificacion {
 		#vericiamos si fue eliminado
 		while read -r cripto_antiguo file_antiguo; do
 			eliminado="$(printf "%s\n" "${archivos_nuevos[@]}" \
-				| gawk '{$2=""; for(i=2;i<=NF;i++) $2 = $2 ( i==2 ? "" : " ") $i; print $2}' | grep -Fx -- "${file_antiguo}")"
+				| gawk '{ruta=""; for(i=2;i<=NF;i++) ruta=(i==2 ? "" : ruta " ") $i; print ruta}' | grep -Fx -- "${file_antiguo}")"
 			if [[ -z "$eliminado" ]]; then
 				echo "$file_antiguo" >> "${destino}/eliminados.log"
 			fi
-		done < <(cat "$ruta_snapshot" | gawk '{$2=""; for(i=2;i<=NF;i++) $2 = $2 (i==2 ? "" : " ") $i; print $1, $2}')
+		done < <(cat "$ruta_snapshot" | gawk '{ruta=""; for(i=2;i<=NF;i++) ruta=(i==2 ? "" : ruta " ") $i; print $1, ruta}')
 	fi
 }
 

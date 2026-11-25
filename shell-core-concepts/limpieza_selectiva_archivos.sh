@@ -9,94 +9,95 @@
 
 function help {
 	echo "El script se debe de ejecutar asi: ./limpieza_selectiva_archivos.sh -d <directorio_objetivo> -m <dias> [-h]"
+	echo "DESCRIPCION: Inspecciona archivos antiguos que sean .bak, .tmp, .old o archivos cuyo nombre empiezen con backup_"
+	echo "y de mayor tamaño dentro de un directorio, calcula el espacio total que ocupan,"
+	echo "registra un reporte previo y solicita una confirmacion explicita del operador antes de proceder con su eliminacion"
 	echo "   -d : Directorio objetivo donde se realizara la inspeccion. Si no se introduce esta bandera se tomara el directorio actual"
 	echo "   -m : Antiguedad minima en dias que deben tener los archivos para ser considerados obsoletos"
 	echo "   -h : Imprime esta guia"
 }
 
 DIRECTORIO="$(pwd)"
-COTA_INFERIOR=""
+DIAS=0
 
 while getopts :d:m:h opt; do
 	case "$opt" in
 		d)
-		 DIRECTORIO="$OPTARG"
-		 if [[ ! -d "$DIRECTORIO" ]]; then
-		 	echo "El directorio ingresado: $DIRECTORIO no existe. Saliendo del script..." >&2
+		  DIRECTORIO="$OPTARG"
+		  if [[ ! -d "$DIRECTORIO" ]]; then
+			echo "El directorio ingresado no existe. Saliendo del script" >&2
 			exit 1
-		 fi
-		 ;;
+		  fi
+		  ;;
 		m)
-		 COTA_INFERIOR="$OPTARG"
-		 ;;
+		  DIAS="$OPTARG"
+		  if ! [[ "$DIAS" =~ ^[0-9]+$ ]]; then
+			echo "El valor ingresado como dias, no es un numero entero. Saliendo del script" >&2
+			exit 1
+		  fi
+		  ;;
 		h)
-		 help
-		 exit 0
-		 ;;
+		  help
+		  exit 0
+		  ;;
 		*)
-		 echo "Opcion Invalida"
-		 help
-		 exit 1
-		 ;;
+		  echo "Opcion ingresada no valida" >&2
+		  help
+		  exit 1
+		  ;;
 	esac
 done
 
-if [[ -z "$COTA_INFERIOR" ]]; then
-	echo "No se introdujo la antiguedad minima en dias. Saliendo del script..." >&2
-	help
-	exit 1
-fi
+## ==========================================================================
+## Busqueda de archivos .bak, .tmp, .old o archivos que comiencen con backup_
+## ==========================================================================
 
-FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
-REPORTE="limpieza_${FECHA}.log"
-if [[ -f "$REPORTE" ]]; then rm -f "$REPORTE"; fi
+mapfile -t files < <(find "$DIRECTORIO" -type f -regextype posix-extended -regex "(.*\.bak$|.*\.tmp$|.*\.old$|.*/backup_.*$)" \
+		-mtime +"$DIAS" -size +1M)
 
-exec 3>>"$REPORTE"
+CANTIDAD="${#files[@]}"
 
-echo "============================================LIMPIEZA================================================" >&3
-echo "DIRECTORIO: $DIRECTORIO" >&3
-echo "FECHA: $FECHA" >&3
-echo "UMBRAL DE DIAS MINIMOS: $COTA_INFERIOR" >&3
-
-mapfile -t files < <(find "$DIRECTORIO" -type f -regextype posix-extended -regex "(\.bak$|\.tmp$|\.old$|.*/backup_[^/]*$)" -mtime +"$COTA_INFERIOR" -size +1M)
-
-echo "CANTIDAD_DE_ARCHIVOS_ENCONTRADOS: ${#files[@]}" >&3
-
-if [[ "${#files[@]}" -eq 0 ]]; then
-	echo -e "\n\nNo hay ningun archivo que cumpla esas caracteristicas" >&3
-else
-	ESPACIO_TOTAL=$(printf "%s\0" "${files[@]}" | xargs -0 du -hc | tail -n 1 | gawk '{print $1}')
-
-	echo "ESPACIO TOTAL EN DISCO OCUPADO: $ESPACIO_TOTAL" >&3
-	echo "LISTADO DE LOS ARCHIVOS: " >&3
-	printf "%s\n" "${files[@]}" >&3
-fi
-
-echo "Limpieza_selectiva_archivos.sh fue lanzada con exito, ver el reporte en: $REPORTE"
-echo "Veamos el contenido"
-echo "================================================================================="
-cat "$REPORTE"
-echo "================================================================================="
-
-sleep 2
-
-if [[ "${#files[@]}" -eq 0 ]]; then
-	exec 3>&-
+if (( CANTIDAD == 0 )); then
+	echo "No se encontraron archivos con esas caracteristicas"
 	exit 0
 fi
 
-read -p "Desea eliminar los archivos mostrados? (s|n): " op
+TAMANIO="$(printf "%s\0" "${files[@]}" | xargs -0 du -hc | tail -n 1 | gawk '{print $1}')"
+FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
+REPORTE="limpieza_${FECHA}"
+>"$REPORTE"
+exec 3>>"$REPORTE"
 
+echo "==================================== LIMPIEZA SELECTIVA ================================" >&3
+echo "SCRIPT: limpieza_selectiva_archivos.sh" >&3
+echo "DIRECTORIO OBJETIVO: $DIRECTORIO" >&3
+echo "LIMITE DE DIAS: $DIAS" >&3
+echo "TAMAÑO: +1M" >&3
+echo "========================================================================================" >&3
+echo "Los archivos encontrados son: " >&3
+printf "%s\n" "${files[@]}" >&3
+echo "Tamaño total: $TAMANIO" >&3
+echo "========================================================================================" >&3
+
+echo "Los archivos encontrados con esas caracteristicas son:"
+printf "%s\n" "${files[@]}"
+read -n 1 -p "Quiere eliminar los archivos? (Y|N): " op
 case "$op" in
-	s|S|Si|SI|si|sI)
-		echo -e "\n\nARCHIVOS ELIMINADOS: \n" >&3
-		for file in "${files[@]}";do
-			rm -fv "$file" | tee -a "$REPORTE"
-		done
-		echo "Los archivos fueron eliminados del sistema correctamente"
-		;;
+	y|Y)
+	  echo "Eliminamremos los archivos"
+	  if rm -v "${files[@]}" 2>/dev/null; then
+		echo "Eliminacion con exito"
+		echo "Los archivos fueron eliminados por el usuario que ejecuto el script" >&3
+	  else
+		echo "Los archivos no pudieron ser eliminados"
+		echo "Hubo un error a la hora de eliminar" >&3
+	  fi
+	  ;;
 	*)
-	  echo "No se puede eliminar los archivos del sistema"
+	  echo "No eliminaremos nada"
 	  ;;
 esac
+echo "========================================================================================" >&3
+
 exec 3>&-
+echo "El script finalizo con exito. Ver el reporte en: $REPORTE"

@@ -9,6 +9,8 @@
 
 function help {
 	echo "El script se ejecuta asi: ./auditoria_avanzada.sh -d <directorio> -s <tamaño_minimo> -m <antiguedad_maxima_dias> [-h]"
+	echo "DESCRIPCION: Detecta archivos regulares voluminosos modificados recientemente dentro de un directorio, calcula el espacio"
+	echo "total que ocupan, ordena los hallazgos de mayor a menor tamaño. Indentifica el archivo mas pesado y guarda en un reporte"
 	echo "   -d : Directorio raiz a inspeccionar, si no se ingresa se asumira que es el directorio actual"
 	echo "   -s : Tamaño minimo de archivos"
 	echo "   -m : Antiguedad maxima de dias"
@@ -17,64 +19,83 @@ function help {
 
 DIRECTORIO="$(pwd)"
 TAMANIO=""
-DIAS=""
+ANTIGUEDAD=""
 
 while getopts :d:s:m:h opt; do
 	case "$opt" in
 		d)
-		 DIRECTORIO="$OPTARG"
-		 if [[ ! -d "$DIRECTORIO" ]]; then
-		 	echo "El directorio ingresado no existe. Saliendo del script..." >&2
+		  DIRECTORIO="$OPTARG"
+		  if [[ ! -d "$DIRECTORIO" ]]; then
+			echo "El directorio ingresado no existe. Saliendo del script" >&2
 			exit 1
-		 fi
-		 ;;
+		  fi
+		  ;;
 		s)
-		 TAMANIO="$OPTARG"
-		 ;;
+		  TAMANIO="$OPTARG"
+		  if ! [[ "$TAMANIO" =~ ^[0-9]+$ ]]; then
+			echo "El valor ingresado como tamaño, no es un numero. Saliendo del script" >&2
+			exit 1
+		  fi
+		  ;;
 		m)
-		 DIAS="$OPTARG"
-		 ;;
+		  ANTIGUEDAD="$OPTARG"
+		  if ! [[ "$ANTIGUEDAD" =~ ^[0-9]+$ ]]; then
+			echo "El valor ingresado como tamaño, no es un numero. Saliendo del script" >&2
+			exit 1
+                  fi
+		  ;;
 		h)
-		 help
-		 exit 0
-		 ;;
+		  help
+		  exit 0
+		  ;;
 		*)
-		 echo "Opcion ingresada invalida"
-		 help
-		 exit 1
-		 ;;
+		  echo "Opcion ingresada no valida" >&2
+		  help
+		  exit 1
+		  ;;
 	esac
 done
 
-if [[ -n "$TAMANIO" && -n "$DIAS" ]]; then
-
-	FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
-	REPORTE="auditoria_disco_avanzada_${FECHA}.log"
-
-	mapfile -t files < <(find "$DIRECTORIO" -type f -size +"$TAMANIO"M -mtime -"$DIAS" -exec stat -c "%s|%b|%y|%u|%n" {} \;)
-
-	CANTIDAD="${#files[@]}"
-	if (( CANTIDAD == 0 )); then
-		echo "No hay archivos que cumplan esas condiciones"
-		exit 0
-	fi
-
-	ESPACIO_TOTAL=$(printf "%s\n" "${files[@]}" | cut -d "|" -f 5 | tr '\n' '\0' | xargs -0 du -hc | tail -n 1 | gawk '{print $1}')
-
-	echo "==============================================REPORTE DE AUDITORIA AVANZADA===================================================" > "$REPORTE"
-	echo "DIRECTORIO: $DIRECTORIO" >> "$REPORTE"
-	echo "FECHA: $FECHA" >> "$REPORTE"
-	echo "TAMAÑO MINIMO: ${TAMANIO} MB" >> "$REPORTE"
-	echo "DIAS LIMITES DE ULTIMA MODIFICACION: $DIAS" >>"$REPORTE"
-	echo "ARCHIVOS ENCONTRADOS: "
-	printf "%s\n" "${files[@]}" | sort -t "|" -k 1nr,1nr | tee -a "$REPORTE"
-	ARCHIVO_MAYOR="$(printf "%s\n" "${files[@]}" | sort -t "|" -k 1nr,1nr | head -n 1 | gawk -F "|" '{print $5}')"
-	echo "CANTIDAD TOTAL DE ARCHIVOS: $CANTIDAD" >> "$REPORTE"
-	echo "ESPACIO TOTAL OCUPADO: $ESPACIO_TOTAL" >> "$REPORTE"
-	echo "El archivo de mayor tamaño es: $ARCHIVO_MAYOR" >> "$REPORTE"
-
-	echo "Auditoria_avanzada.sh concluida correctamente. Ver el reporte en: $REPORTE"
-else
-	echo "No se introdujo los argumentos necesarios"
+if [[ -z "$ANTIGUEDAD" || -z "$TAMANIO" ]]; then
+	echo "No hay parametros necesarios, para que se realize el script" >&2
 	exit 1
 fi
+
+mapfile -t files < <(find "$DIRECTORIO" -type f -mtime -"$ANTIGUEDAD" -size +"$TAMANIO"M -exec stat -c '%s|%b|%y|%u|%n' {} \;)
+
+CANTIDAD="${#files[@]}"
+
+if (( CANTIDAD == 0 )); then
+	echo "El directorio $DIRECTORIO no contiene archivos con esas caracteristicas"
+	exit 0
+fi
+
+ESPACIO_TOTAL="$(printf "%s\n" "${files[@]}" | cut -d "|" -f 5 | tr '\n' '\0' | xargs -0 du -hc | tail -n 1 | gawk '{print $1}')"
+FILE_MAYOR_TAMANIO="$(printf "%s\n" "${files[@]}" | cut -d "|" -f 1,5 | sort -t "|" -k1,1nr | head -n 1 | gawk -F "|" '{print $2}')"
+
+FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
+REPORTE="auditoria_disco_avanzada_${FECHA}.log"
+>"$REPORTE"
+exec 3>>"$REPORTE"
+
+echo "=================================== AUDITORIA DE DISCO AVANZADA ================================" >&3
+echo "SCRIPT: auditoria_avanzada.sh" >&3
+echo "DIRECTORIO OBJETIVO: $DIRECTORIO " >&3
+echo "LIMITE DE TAMAÑO: $TAMANIO" >&3
+echo "ANTIGUEDAD: $ANTIGUEDAD" >&3
+echo "HOSTNAME: $HOSTNAME" >&3
+echo "USUARIO: $USER" >&3
+echo "FECHA: $FECHA" >&3
+echo "================================================================================================" >&3
+echo "Los archivos encontrados que cumplen esa caracteristicas son:" >&3
+
+printf "%s\n" "${files[@]}" | sort -t "|" -k1,1nr >&3
+
+echo -e "\nLa cantidad de archivos totales encontrados fueron: $CANTIDAD \n" >&3
+echo "El espacio total ocupado es: $ESPACIO_TOTAL" >&3
+echo "EL archivo con mayor tamaño es: ${FILE_MAYOR_TAMANIO}" >&3
+
+echo "================================================================================================" >&3
+
+exec 3>&-
+echo "El script finalizo con exito. Ver el reporte en $REPORTE"

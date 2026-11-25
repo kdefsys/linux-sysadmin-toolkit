@@ -10,7 +10,8 @@
 
 function help {
 	echo "Este script realiza una auditoria periodica de archivos criticos dentro de una ruta especificada"
-	echo "Se busca unicamente archivos regulares, que tengan extensiones tipicas de configuracion o logs ( .conf, .cnf o .log), que hayan sido modificados en las ultimas 24 horas"
+	echo "DESCRIPCION: Se busca unicamente archivos regulares, que tengan extensiones tipicas de configuracion o logs ( .conf, .cnf o"
+	echo " .log), que hayan sido modificados en las ultimas 24 horas"
 	echo "y ademas excluye cualquier archivo que se encuentre dentro de carpetas temporales (rutas que contengan /tmp)"
 	echo "Se debe ejecutar: ./auditar_archivos_criticos.sh -d <directorio> [-h]"
 	echo "   -d : Directorio objetivo que se va a auditar, si no se introduce se asume que es el directorio actual"
@@ -18,37 +19,59 @@ function help {
 }
 
 DIRECTORIO="$(pwd)"
+
 while getopts :d:h opt; do
 	case "$opt" in
 		d)
-		 if [[ -d "$OPTARG" ]]; then
-			DIRECTORIO="$OPTARG";
-		 else
-			echo "El directorio $OPTARG no existe, saliendo del script ..." >&2
+		  DIRECTORIO="$OPTARG"
+		  if [[ ! -d "$DIRECTORIO" ]]; then
+			echo "El directorio objetivo ingresado no existe. Saliendo del script" >&2
 			exit 1
-		 fi
-		 ;;
+		  fi
+		  ;;
 		h)
-		 help
-		 exit 0
-		 ;;
+		  help
+		  exit 0
+		  ;;
 		*)
-		 echo "Opcion invalida"
-		 help
-		 exit 1
-		 ;;
+		  echo "Opcion ingresada no valida" >&2
+		  help
+		  exit 1
+		  ;;
 	esac
 done
 
-mapfile -t files < <(find "$DIRECTORIO" -type f ! -path "*/tmp/*" -regextype posix-extended -regex "(.*\.conf$|.*\.cnf$|.*\.log$)" -mtime -1 -exec stat -c "%s|%y|%n" {} \; \
-	| gawk -F "|" 'BEGIN{OFS="\t"} {print $1, $2, $3}')
+## =========================================================================================
+## Buscamos los archivos .conf, .cnf o .log que han sido modificados en las ultimas 24 horas
+## pero que no pertenecen a la ruta /tmp como intermedio osea (ejemplo: /tmp/)
+## =========================================================================================
+
+mapfile -t files < <(find "$DIRECTORIO" -type f -not -path "*/tmp*" -regextype posix-extended -regex "(.*\.conf$|.*\.cnf$|.*\.log$)" -mtime -1 \
+	-exec stat -c '%s|%y|%n' {} \; 2>/dev/null \
+	| gawk -F "|" 'BEGIN{OFS="\t"}{ruta="";for(i=3;i<=NF;++i) ruta=(i==3 ? "" : ruta " ") $i; print $1, $2, ruta}')
+
+CANTIDAD="${#files[@]}"
+
+if (( CANTIDAD == 0 )); then
+	echo "No hay archivos que cumplen esa caracteristica dentro del directorio objetivo: $DIRECTORIO"
+	exit 0
+fi
 
 FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
 REPORTE="reporte_auditoria_archivos_criticos_${FECHA}.log"
+
+>"$REPORTE"
 exec 3>>"$REPORTE"
 
-echo -e "TAMAÑO\t\tFECHA_MODIFICACION\t\tRUTA\n" >&3
+echo "=================================================== REPORTE ARCHIVOS CRITICOS ======================================" >&3
+echo "SCRIPT: auditar_archivos_criticos.sh" >&3
+echo "FECHA: $FECHA" >&3
+echo "HOSTNAME: $HOSTNAME" >&3
+echo "Los archivos .conf, .cnf o .log modificados en las ultimas 24 horas, que no pertenecen a subrutas /tmp/ son: " >&3
+echo -e "TAMAÑO\t\tFECHA ULTIMA MODIFICACION\t\tRUTA\n" >&3
+
 printf "%s\n" "${files[@]}" >&3
 
-echo "Auditoria completada con exito. Reporte generado en: $REPORTE"
 exec 3>&-
+
+echo "Script concluyó con exito. Ver el reporte en: $REPORTE"

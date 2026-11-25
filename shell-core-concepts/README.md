@@ -224,6 +224,7 @@ ________________________________________________________________________________
    - Gestión de Bloques (The Space Paradox): Es importante notar que en archivos muy pequeños (pocos KB), el tamaño reportado 
    por du puede parecer mayor tras la rotación. Esto se debe al overhear del sistema de archivos: cada nuevo archivo comprimido 
    y el directorio de destino ocupan al menos un bloque de disco (usualmente 4KB), independientemente del peso real de los datos.
+   - Uso de mv -n para que no lo sobreescriba
 
 __________________________________________________________________________________________________________________________________
 

@@ -86,7 +86,7 @@ else
 		echo "[WARN] La cantidad supera el limite. Vamos a rotar y eliminar"
 		SOBRA=$(( CANTIDAD - LIMITE ))
 		if printf "%s\0" "${files_comprimidos[@]}" | xargs -0 stat -c "%Y|%n" \
-			| gawk -F "|" '{$2="";for(i=2;i<=NF;i++) $2 = $2 (i==2?"":" ") $i; printf "%s|%s\n" $1, $2}' | sort -t "|" -k1,1n \
+			| gawk -F "|" '{ruta="";for(i=2;i<=NF;i++) ruta=(i==2?"": ruta " ") $i; printf "%s|%s\n" $1, ruta}' | sort -t "|" -k1,1n \
 			| head -n "$SOBRA" | gawk -F "|" '{printf "%s\0", $2}' | xargs -0 rm -fv 2>/dev/null; then
 			echo "Se eliminaron correctamente los archivos sobrantes"
 		else

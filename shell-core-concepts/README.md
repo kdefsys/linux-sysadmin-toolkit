@@ -94,6 +94,7 @@ _____________________________________________________________________________
    - La opcion -H, nos ayuda a que incluso si el find solo encuentra un archivo,
    la salida mantenga el formato archivo:conteo, lo cual evita que el sort se
    rompa.
+   - El uso de not se coloca al lado de -regex no al lado de -regextype
 
    Además, el uso de 'sort -k 2nr' ordena los resultados basándose únicamente en el
    número de coincidencias, lo que convierte una gran cantidad de logs crudos en un

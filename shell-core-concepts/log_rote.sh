@@ -8,9 +8,27 @@
 
 function help {
 	echo "El script se debe ejecutar asi: ./log_rote.sh -d <directorio> -m <dias> [-h]"
+	echo "DESCRIPCION: Identifica archivos de log de acceso o de error que superen cierta antiguedad en dias, solicita confirmacion"
+	echo "al operador, comprime los archivos seleccionados, los mueve a un directorio historico y registra metricas de espacio antes"
+	echo "y despues del proceso"
 	echo "   -d : La ruta del directorio objetivo donde residen los logs activos. Si no se introduce esta bandera, se asume el directorio actual"
 	echo "   -m : La antiguedad minima en dias para rotas los archivos"
 	echo "   -h : Imprime esta guia"
+}
+
+function impresion_archivo {
+	local file="$1"
+	local can_arreglo="$2"
+	local espacio_antes="$3"
+	local espacio_despues="$4"
+
+	echo "======================================== ROTACION DE LOGS ==============================" >>"$file"
+	echo "DIRECTORIO HISTORICO: $DIRECTORIO_HISTORICO" >> "$file"
+	echo "CANTIDAD ANTES DE LA ROTACION: $espacio_antes" >> "$file"
+	echo "CANTIDAD DE LOGS_ROTADOS: $can_arreglo" >> "$file"
+	echo "CANTIDAD DESPUES DE LA ROTACION: $espacio_despues" >> "$file"
+	echo "========================================================================================" >>"$file"
+
 }
 
 DIRECTORIO="$(pwd)"
@@ -19,94 +37,107 @@ DIAS=""
 while getopts :d:m:h opt; do
 	case "$opt" in
 		d)
-		 DIRECTORIO="$OPTARG"
-		 if [[ ! -d "$DIRECTORIO" ]]; then echo "El directorio ingresado no existe. Saliendo del script" >&2; exit 1; fi
-		 ;;
+		  DIRECTORIO="$OPTARG"
+		  if [[ ! -d "$DIRECTORIO" ]]; then
+			echo "El directorio ingresado no existe. Saliendo del script" >&2
+			exit 1
+		  fi
+		  ;;
 		m)
-		 DIAS="$OPTARG"
-		 ;;
+		  DIAS="$OPTARG"
+		  if ! [[ "$DIAS" =~ ^[0-9]+$ ]]; then
+			echo "El valor ingresado como antiguedad minima en dias no es un valor numerico. Saliendo del script" >&2
+			exit 1
+		  fi
+		  ;;
 		h)
-		 help
-		 exit 0
-		 ;;
+		  help
+		  exit 0
+		  ;;
 		*)
-		 echo "Opcion ingresada invalida" >&2
-		 help
-		 exit 1
-		 ;;
+		  echo "Opcion ingresada no valida" >&2
+		  help
+		  exit 1
+		  ;;
 	esac
 done
 
 if [[ -z "$DIAS" ]]; then
-	echo "No se introdujo el argumento obligatorio (-m <dias>)" >&2
+	echo "Argumentos insuficientes. Saliendo del script" >&2
 	help
 	exit 1
 fi
 
-if ! [[ "$DIAS" =~ ^[0-9]+$ ]]; then
-	echo "Error: El argumento -m debe ser un número entero positivo." >&2
-	exit 1
+## ======================================================================================
+## Busca archivos .log con patrones que incluyan access o error antes de .log
+## ======================================================================================
+
+mapfile -t files < <(find "$DIRECTORIO" -type f -regextype posix-extended -regex ".*(access|error).*\.log$"   -mtime +"$DIAS" )
+
+CANTIDAD="${#files[@]}"
+if (( CANTIDAD == 0 )); then
+	echo "No se encontraron archivos con esas caracteristicas en el directorio $DIRECTORIO"
+	exit 0
 fi
 
 FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
 REPORTE="rotacion_ejecucion.log"
 
-echo "===================================REPORTE DE ROTACION DE LOGS A COMPRIMIDOS=============================================================" > "$REPORTE"
-echo "DIRECTORIO $DIRECTORIO" >> "$REPORTE"
-echo "FECHA: $FECHA" >> "$REPORTE"
-echo "LISTA DE ARCHIVOS ENCONTRADOS QUE SEAN *access*.log o *error*.log" >> "$REPORTE"
-
-mapfile -t files < <(find "$DIRECTORIO" -regextype posix-extended -regex ".*/.*(access|error).*\.log$" -mtime +"$DIAS")
-CANTIDAD="${#files[@]}"
-
-if (( CANTIDAD == 0 )); then
-	echo "No hay archivos dentro del directorio $DIRECTORIO que cumplan estas caracteristicas" >> "$REPORTE"
-	exit 0
-fi
-printf "%s\n" "${files[@]}" >> "$REPORTE"
-echo -e "\nLa lista encontrada fue: \n"
+echo "Los archivos encontrados son:"
 printf "%s\n" "${files[@]}"
 
-read -p "Desea pasar a la operacion (s|n): " op
+>"$REPORTE"
+echo "======================================= LOG ROTE ========================================" >> "$REPORTE"
+echo "SCRIPT: log_rote.sh" >> "$REPORTE"
+echo "HOSTNAME: $HOSTNAME" >> "$REPORTE"
+echo "DIRECTORIO OBJETIVO: $DIRECTORIO" >> "$REPORTE"
+echo "USUARIO: $USER" >> "$REPORTE"
+echo "DIAS MINIMOS: $DIAS" >> "$REPORTE"
+echo "FECHA: $FECHA" >> "$REPORTE"
+echo "=========================================================================================" >> "$REPORTE"
+echo "Los archivos encontrados son: " >> "$REPORTE"
+printf "%s\n" "${files[@]}" >> "$REPORTE"
+echo "=========================================================================================" >> "$REPORTE"
+
+read -n1 -p "OPERAMOS LA ROTACION? (Y|N): " op
+
+echo -e "\n"
+
 case "$op" in
-	s|S)
-		DIRECTORIO_SALIDA="${DIRECTORIO}/archive_${FECHA}"
-	        if [[ ! -d "$DIRECTORIO_SALIDA" ]]; then
-			mkdir -p "$DIRECTORIO_SALIDA"
-			echo "Se creo correctamente la carpeta historica $DIRECTORIO_SALIDA" >> "$REPORTE"
+	y|Y)
+	  FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
+	  DIRECTORIO_HISTORICO="${DIRECTORIO}/archive_${FECHA}"
+	  if mkdir -p "${DIRECTORIO_HISTORICO}" 2>/dev/null; then
+		echo "Se creo correctamente el directorio historico $DIRECTORIO_HISTORICO"
+		ESPACIO_DIRECTORIO_OBJETIVO="$(du -hc "${DIRECTORIO}" | tail -n 1 | gawk '{print $1}')"
+		echo "El espacio antes de la ejecucion es: ${ESPACIO_DIRECTORIO_OBJETIVO}"
+		if printf "%s\0" "${files[@]}" | xargs -0 gzip  2>/dev/null; then
+			echo "La operacion de comprimir los archivos se completo con exito"
+			## Verificacion si hay archivos residuales
+			for file in "${files[@]}"; do
+				if [[ -e "$file" ]]; then
+					echo "Si hay archivo residual. Saliendo del script" >&2
+					exit 1
+				fi
+			done
+			for file in "${files[@]}"; do
+				ruta="${file}.gz"
+				mv -n "${ruta}" "${DIRECTORIO_HISTORICO}" 2>/dev/null
+			done
+			ESPACIO_DIRECTORIO_OBJETIVO_2="$(du -hc "$DIRECTORIO" | tail -n 1 | gawk '{print $1}')"
+			impresion_archivo "$REPORTE" "$CANTIDAD" "$ESPACIO_DIRECTORIO_OBJETIVO" "$ESPACIO_DIRECTORIO_OBJETIVO_2"
+		else
+			echo "No se pudo comprimir correctamente" >&2
+			exit 1
 		fi
-		ESPACIO_ANTES="$(du -hc "$DIRECTORIO" | tail -n 1 | gawk '{print $1}')"
-
-		printf "%s\0" "${files[@]}" | xargs -0 gzip 2>/dev/null
-
-		archivos_pendientes=0
-		for file in "${files[@]}"; do
-			if [[ -f "$file" ]]; then
-				((archivos_pendientes++))
-			fi
-		done
-		if (( archivos_pendientes > 0 )); then
-			echo "Error: Al menos $archivos_pendientes archivos no se eliminaron al comprimirse." >&2
-	    		exit 1
-		fi
-
-		echo "CANTIDAD DE ARCHIVOS COMPRIMIDOS: $CANTIDAD" >> "$REPORTE"
-		echo "Compresion terminada"
-
-		for file in "${files[@]}"; do
-			if [[ -f "${file}.gz" ]]; then
-				mv "${file}.gz" "$DIRECTORIO_SALIDA/" 2>/dev/null
-			fi
-		done
-		ESPACIO_AHORA="$(du -hc "$DIRECTORIO" | tail -n 1 | gawk '{print $1}')"
-
-		echo "Compresion terminada. Los archivos comprimidos fueron enviados al directorio: $DIRECTORIO_SALIDA correctamente" >> "$REPORTE"
-		echo -e "\n\n======================================================================\n" >> "$REPORTE"
-		echo "Espacio ocupado antes de la compresion: $ESPACIO_ANTES" >> "$REPORTE"
-		echo "Espacio ocupado despues de la compresion: $ESPACIO_AHORA" >> "$REPORTE"
-
-		;;
+	  else
+		echo "Fallo la creacion del directorio historico. Saliendo del script" >&2
+		exit 1
+	  fi
+	  ;;
 	*)
-		echo "Se cancelo la operacion"
-		;;
+	  echo "Cancelamos la operacion"
+	  ;;
 esac
+
+echo "El script finalizo correctamente. Ver el reporte en $REPORTE"

@@ -3,164 +3,142 @@
 ### Autor: kdefsys
 ### Descripcion: En servidores de producción expuestos a redes internas o a Internet, los atacantes o scripts automatizados intentan constantemente vulnerar el acceso mediante ataques
 ### de fuerza bruta por SSH. Al mismo tiempo, malas prácticas de administración pueden dejar cuentas locales con privilegios elevados injustificados o configuraciones inseguras.
-### Uso: sudo ./auditor_seguridad_accessos.sh [-u <umbral_fallos>] [-l <archivo_log>] [-h]
+### Uso: sudo ./auditor_seguridad_accessos.sh [-u <umbral_fallos>] [-l] [-h]
 
 if [[ "$EUID" -ne 0 ]]; then
-	echo "El script debe de ejecutarse con permisos de superusuario" >&2
+	echo "El script debe de ejecutarse con permiso de superusuario. Saliendo del script" >&2
 	exit 1
 fi
 
 function help {
 	echo "El script debe ejecutarse asi: ./auditor_seguridad_accessos.sh -u <umbral_fallos> -l <archivo_log> [-h] "
-	echo "   -u : Numero minimo de intentos fallidos de autenticacionnn para que una direccion IP sea catalogada como sospechosa (valor por defecto: 5)"
-	echo "   -l : Ruta al archivo log de autenticacion a inspeccionar. Si no se especifica, debe buscar automaticamente el archivo estandar del sistema"
-	echo "   por ejemplo, /var/log/auth.log en Debian/Ubuntu o /var/log/secure en RHEL/CentOS y validar que exista y tenga permiso de lectura."
+	echo "Descripcion: Audita cuentas locales y registros de autenticacio SSH frente a un umbral configurable, genera un reporte"
+	echo "detallado y muestra un resumen conciso por consola"
+	echo -e "\n"
+	echo "   -u : Numero minimo de intentos fallidos de autenticacion para que una direccion IP sea catalogada como sospechosa (valor por defecto: 5)"
+	echo "   -l : Operacion para ver logs del sistema"
 	echo "   -h : Imprime esta guia"
 }
 
-FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
 UMBRAL=5
-ARCHIVO_LOG=""
-REPORTE="auditoria_seguridad_${FECHA}.log"
+OPERACION="NO"
 
-while getopts :u:l:h opt; do
+while getopts :u:lh opt; do
 	case "$opt" in
 		u)
-		 if [[ "$OPTARG" =~ ^[0-9]+$ ]] && (( OPTARG > 0 )); then
-			UMBRAL="$OPTARG"
-		 else
-			echo "El valor de umbral ingresado no es un numero. Saliendo del script..." >&2
+		  UMBRAL="$OPTARG"
+		  if ! [[ "$UMBRAL" =~ ^[0-9]+$ ]]; then
+			echo "El valor ingresado como valor para numero de intentos fallidos, no es un numero" >&2
 			exit 1
-		 fi
-		 ;;
+		  fi
+		  ;;
 		l)
-		 if [[ -f "$OPTARG" ]]; then
-		 	if ! [[ -r "$OPTARG" ]]; then
-				echo "El archivo ingresado existe, pero no tiene permiso de lectura" >&2
-				exit 1
-			else
-				ARCHIVO_LOG="$OPTARG"
-			fi
-		 else
-			echo "El archivo log ingresado no existe. Saliendo del script..." >&2
-			exit 1
-		 fi
-		 ;;
+		  OPERACION="SI"
+		  ;;
 		h)
-		 help
-		 exit 0
-		 ;;
+		  help
+		  exit 0
+		  ;;
 		*)
-		 echo "Opcion ingresada no valida" >&2
-		 help
-		 exit 1
-		 ;;
+		  echo "Opcion ingresada no valida. Saliendo del script" >&2
+		  help
+		  exit 1
+		  ;;
 	esac
 done
 
-if [[ -z "$ARCHIVO_LOG" ]]; then
-	if [[ -f "/var/log/auth.log" ]]; then
-		ARCHIVO_LOG="/var/log/auth.log"
-	elif [[ -f "/var/log/secure" ]]; then
-		ARCHIVO_LOG="/var/log/secure"
+if [[ "$OPERACION" == "NO" ]]; then
+	echo "No se introdujo la bandera para realizar la operacion" >&2
+	exit 1
+else
+	FECHA=$(date '+%Y-%m-%d_%H-%M-%S')
+	REPORTE="auditoria_seguridad_${FECHA}.log"
+	>"$REPORTE"
+	exec 3>>"$REPORTE"
+
+	echo "======================================= AUDITORIA DE SEGURIDAD DE ACCESO Y DE IPs ===================================" >&3
+	echo "SCRIPT: auditor_seguridad_accesos.sh" >&3
+	echo "HOSTNAME: $HOSTNAME" >&3
+	echo "USUARIO: $USER" >&3
+	echo "UMBRAL: $UMBRAL" >&3
+	echo "FECHA: $FECHA" >&3
+	echo "=====================================================================================================================" >&3
+	echo "AUDITORIA DE CUENTAS LOCALES" >&3
+	echo "USUARIOS CON CUENTAS QUE NO SON ROOT PERO TIENEN ID=0" >&3
+
+	## =============================================================
+	## 		AUDITORIA DE CUENTAS LOCALES
+	## =============================================================
+	## Detectando cuentas locales distintas de root que posean idenfitificador de usuario 0.
+
+	mapfile -t cuentas < <(gawk -F ":" -v normal="root" '{
+			if ( $1 != normal && $3 == 0 ) printf "%s\n", $1
+		}' "/etc/passwd")
+	if [[ "${#cuentas[@]}" -eq 0 ]]; then
+		echo "NINGUNA CUENTA" >&3
 	else
-		echo "No se encontró ningún archivo de log de autenticación estándar (/var/log/auth.log o /var/log/secure)." >&2
-		exit 1
+		printf "%s\n" "${cuentas[@]}" >&3
 	fi
-fi
+	echo "====================================================================================================================" >&3
+	echo "AUDITORIA DE CUENTAS DE SHELL INTERACTIVA (/bin/bash o /bin/sh)" >&3
+	echo "USUARIOS CON CUENTAS QUE TIENEN CUALQUIERA DE ESAS DOS SHELLS" >&3
 
-## ------------------------------------------------------------------------------------------------------------------
-## 					AUDITORIA DE CUENTAS LOCALES
-## ------------------------------------------------------------------------------------------------------------------
+	## Identificamos cuentas de shell interactiva (/bin/bash o /bin/sh)
 
-# Detectando si existe algun usuario en el sistema que tenga UID 0 pero que no sea root
+	mapfile -t shell_interactiva < <(gawk -F ":" '{
+			if ( $7 == "/bin/bash" || $7 == "/bin/sh" ) printf "%s|%s\n", $1, $7
+		}' "/etc/passwd")
+	if [[ "${#shell_interactiva[@]}" -eq 0 ]]; then
+		echo "NINGUNA CUENTA" >&3
+	else
+		printf "%s\n" "${shell_interactiva[@]}" >&3
+	fi
+	echo "===================================================================================================================" >&3
+	echo "AUDITORIA DE CUENTAS CON CONTRASEÑAS VACIAS" >&3
 
->"$REPORTE"
-exec 3>>"$REPORTE"
+	## Identificamos cuentas que tengan la contraseña vacia en la base de sombras del sistema
 
-echo -e "\n==================================== AUDITORIA SEGURIDAD ACCESSOS =============================================\n" >&3
-echo "SCRIPT: auditor_seguridad_accesos.sh" >&3
-echo "UMBRAL: $UMBRAL" >&3
-echo "LOG: $ARCHIVO_LOG" >&3
-echo "FECHA: $FECHA" >&3
-echo -e "\n===============================================================================================================\n" >&3
-echo -e "Usuarios con ID 0 pero que no sean root" >&3
+	mapfile -t contrasenias_vacias < <(gawk -F ":" '{if ($2 == "") print $1}' /etc/passwd)
 
-mapfile -t usuarios_peligrosos < <(gawk -F ':' '$3==0{	if($1 != "root") print $1}' /etc/passwd)
-CANTIDAD_USUARIOS_PELIGROSOS="${#usuarios_peligrosos[@]}"
-if (( CANTIDAD_USUARIOS_PELIGROSOS == 0 )); then
-	echo "No existen usuarios que tengan UID 0 y que no sean root" >&3
-else
-	printf "%s\n" "${usuarios_peligrosos[@]}" >&3
-fi
-
-echo -e "\n===============================================================================================================\n" >&3
-echo -e "Cuentas activas con shell interactiva" >&3
-
-SHELLS=("/bin/bash" "/bin/sh")
-mapfile -t cuentas_activas < <(gawk -F ":" -v a_sh="${SHELLS[*]}" 'BEGIN{OFS="-"} {
-	encuentro=0
-	split(a_sh, arreglo, " ")
-	for ( indice in arreglo){
-		if ($7 == arreglo[indice]) encuentro++
-	}
-	if (encuentro != 0 ) print $1, $7
-}' /etc/passwd)
-
-CANTIDAD_SHELLS="${#cuentas_activas[@]}"
-if (( CANTIDAD_SHELLS == 0 )); then
-	echo "No existen cuentas activas (con shell "$SHELLS[*]") " >&3
-else
-	printf "%s\n" "${cuentas_activas[@]}" >&3
-fi
-
-echo -e "\n==============================================================================================================\n" >&3
-echo -e "Cuentas con contraseña vacias" >&3
-
-mapfile -t cuentas_vacias < <(gawk -F ":" '{if ($2 == "") print $1}' /etc/shadow)
-CANTIDAD_VACIAS="${#cuentas_vacias[@]}"
-if (( CANTIDAD_VACIAS == 0 )); then
-	echo "No existen contraseñas activas" >&3
-else
-	printf "%s\n" "${cuentas_vacias[@]}" >&3
-fi
-
-echo -e "\n==============================================================================================================\n" >&3
-echo "Auditoria de ataques de fuerza bruta por SSH" >&3
-echo -e "\nIntentos Fallidos de acceso por SSH (UMBRAL >= $UMBRAL)" >&3
-
-mapfile -t ips_sospechosas < <(grep "Failed password" "$ARCHIVO_LOG" | gawk -v umbral="$UMBRAL" '{
-	for (i=1 ; i <= NF; i++){
-		if ($i == "from") {
-			ip = $(i+1)
-			conteo[ip]++
-			break
+	if [[ "${#contrasenias_vacias[@]}" -eq 0 ]]; then
+		echo "NINGUNA CUENTA" >&3
+	else
+		printf "%s\n" "${contrasenias_vacias[@]}" >&3
+	fi
+	echo "==================================== AUDITORIA DE INTENTOS FALLIDOS POR SSH =======================================" >&3
+	## ================================================================
+	## 		AUDITORIA DE INTENTOS FALLIDOS POR SSH
+	## ================================================================
+	mapfile -t ip_sospechosos < <(journalctl -u ssh -u sshd --no-pager --output=cat 2>/dev/null \
+		| grep -F "Failed password" \
+		| gawk -v umbral="$UMBRAL" '{
+			for(i=1;i<=NF;++i){
+				if ($i == "from"){
+					ip=$(i+1)
+					conteo[ip]++
+					break
+				}
+			}
 		}
-	}
-} END{
-	for (ip in conteo){
-		if (conteo[ip] >= umbral){
-			printf "%-6d intentos fallidos | IP de origen: %s\n", conteo[ip], ip
-		}
-	}
-}' | sort -rn)
+		END{
+			for (ip in conteo){
+				if (conteo[ip] >= umbral){
+					printf "%-6d intentos fallidos | IP de origen: %s\n", conteo[ip], ip
+				}
+			}
+		}' | sort -rn )
+	if [[ "${#id_sospechosos[@]}" -eq 0 ]]; then
+		echo "No hay IPs sospechosos" >&3
+	else
+		echo "Si hay IPs sospechosos:" >&3
+		printf "%s\n" "${ip_sospechosos[@]}" >&3
+	fi
 
-CANTIDAD_IPS="${#ips_sospechosas[@]}"
-if (( CANTIDAD_IPS == 0 )); then
-    echo "OK: No se registraron IPs que alcancen o superen el umbral de $UMBRAL fallos." >&3
-else
-    printf "%s\n" "${ips_sospechosas[@]}" >&3
+	exec 3>&-
+	echo "Script finalizado con exito. Puede ver el reporte en: $REPORTE"
+	echo "RESUMEN"
+	echo "CANTIDAD DE USUARIOS CON PRIVILEGIOS: ${#cuentas[@]}"
+	echo "CANTIDAD DE USUARIOS CON SHELL INTERACTIVA: ${#shell_interactiva[@]}"
+	echo "CANTIDAD DE USUARIOS CON CONTRASENIAS VACIAS: ${#contrasenias_vacias[@]}"
+	echo "CANTIDAD DE IPs SOSPECHOSAS: ${#ip_sospechosos[@]}"
 fi
-
-echo -e "\n=================================================================================================" >&3
-echo "FIN DEL INFORME" >&3
-echo "=================================================================================================" >&3
-
-exec 3>&-
-
-# Resumen conciso por consola
-echo "Auditoria de seguridad finalizada."
-echo "  - Superusuarios ocultos (UID 0): ${#usuarios_peligrosos[@]}"
-echo "  - Cuentas sin contrasena       : ${#cuentas_vacias[@]}"
-echo "  - IPs sospechosas detectadas   : $CANTIDAD_IPS"
-echo "Reporte detallado generado en: $REPORTE"

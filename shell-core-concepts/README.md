@@ -339,6 +339,8 @@ ________________________________________________________________________________
 
    ```
    Curiosidades Técnicas:
+   - Uso del comando journalctl con opciones: (-u <unidad>) --no-pager y --output=cat
+   - Uso del banderin END en gawk para realizar algo antes de la impresion
    - Parsing dinámico por token de campo en gawk: En lugar de depender de posiciones de columna fijas (que varían según el daemon SSH y la distribución entre Failed password for
    invalid user... y Failed password for root...), el script itera for (i=1; i <= NF; i++) hasta localizar la palabra clave "from", capturando con seguridad el token inmediato 
    siguiente $(i+1) como la IP de origen.
